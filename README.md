@@ -1,6 +1,6 @@
 # Sonarr-Dropout
 
-[![Version](https://img.shields.io/badge/version-0.1.3--rc2-blue.svg)](https://github.com/roosnic1/sonarr-dropout/releases)
+[![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)](https://github.com/roosnic1/sonarr-dropout/releases)
 [![CI Build](https://github.com/roosnic1/sonarr-dropout/actions/workflows/ci.yml/badge.svg)](https://github.com/roosnic1/sonarr-dropout/actions/workflows/ci.yml)
 [![Docker Image](https://img.shields.io/badge/ghcr.io-sonarr--dropout-blue.svg)](https://github.com/roosnic1/sonarr-dropout/pkgs/container/sonarr-dropout)
 
