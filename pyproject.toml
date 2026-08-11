@@ -17,6 +17,8 @@ dependencies = [
     "pydantic-settings==2.15.0",
     "python-multipart==0.0.32",
     "lxml>=4.9.3",
+    "tvdb-v4-official>=1.1.0",
+    "yt-dlp>=2026.7.4",
 ]
 
 [project.optional-dependencies]
@@ -35,7 +37,9 @@ py-modules = [
     "__version__",
     "config",
     "main",
-    "orionoid_client",
+    "tvdb_client",
+    "dropout_downloader",
+    "sabnzbd_api",
     "torznab_builder",
 ]
 

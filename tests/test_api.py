@@ -18,87 +18,102 @@ class TestCapabilities:
         searching = _parse_xml(resp.text).find("searching")
         assert searching.find("search") is not None
         assert searching.find("tv-search") is not None
-        assert searching.find("movie-search") is not None
+        assert searching.find("movie-search") is None
 
 
 class TestSearch:
-    async def test_movie_search(self, test_client, mock_search, reset_globals):
-        await test_client.get("/api?t=movie&q=test")
-        kw = mock_search.call_args.kwargs
-        assert kw["media_type"] == "movie"
-        assert kw["query"] == "test"
+    async def test_single_episode_search(self, test_client, mock_search, reset_globals):
+        resp = await test_client.get(
+            "/api",
+            params={
+                "t": "tvsearch", "q": "Game Changer", "tvdbid": 369988,
+                "season": 8, "ep": 2,
+            },
+        )
+        assert resp.status_code == 200
+        mock_search.resolve_episode.assert_called_once_with(369988, 8, 2)
 
-    async def test_tv_search_with_season_episode(
+        item = _parse_xml(resp.text).findall(".//item")[0]
+        assert "Game Changer" in item.find("title").text
+        assert "S08E02" in item.find("title").text
+        assert "Rulette 2" in item.find("title").text
+        assert "/sabnzbd/nzb/369988/8/2" in item.find("link").text
+
+    async def test_season_pack_resolves_every_episode(
         self, test_client, mock_search, reset_globals
     ):
-        await test_client.get("/api?t=tvsearch&q=test&season=2&ep=5")
-        kw = mock_search.call_args.kwargs
-        assert kw["media_type"] == "show"
-        assert kw["season"] == 2
-        assert kw["episode"] == 5
+        resp = await test_client.get(
+            "/api", params={"t": "tvsearch", "tvdbid": 369988, "season": 8}
+        )
+        assert resp.status_code == 200
+        mock_search.get_season_episode_numbers.assert_called_once_with(369988, 8)
+        assert mock_search.resolve_episode.call_count == 2
+        assert len(_parse_xml(resp.text).findall(".//item")) == 2
 
-    async def test_no_category_searches_both(
+    async def test_search_without_tvdbid_returns_no_results(
         self, test_client, mock_search, reset_globals
     ):
-        await test_client.get("/api?t=search&q=test")
-        assert mock_search.call_count == 2
-        types = {c.kwargs["media_type"] for c in mock_search.call_args_list}
-        assert types == {"movie", "show"}
+        resp = await test_client.get("/api", params={"t": "tvsearch", "q": "test"})
+        assert resp.status_code == 200
+        assert len(_parse_xml(resp.text).findall(".//item")) == 0
+        mock_search.resolve_episode.assert_not_called()
 
-    async def test_strips_tt_prefix_from_imdb_id(
+    async def test_search_without_season_returns_no_results(
         self, test_client, mock_search, reset_globals
     ):
-        await test_client.get("/api?t=movie&imdbid=tt1234567")
-        assert mock_search.call_args.kwargs["imdb_id"] == "1234567"
+        resp = await test_client.get("/api", params={"t": "tvsearch", "tvdbid": 369988})
+        assert resp.status_code == 200
+        assert len(_parse_xml(resp.text).findall(".//item")) == 0
+        mock_search.resolve_episode.assert_not_called()
+
+    async def test_unresolvable_episode_is_skipped(
+        self, test_client, mock_search, reset_globals
+    ):
+        mock_search.resolve_episode.return_value = None
+        resp = await test_client.get(
+            "/api", params={"t": "tvsearch", "tvdbid": 369988, "season": 8, "ep": 2}
+        )
+        assert resp.status_code == 200
+        assert len(_parse_xml(resp.text).findall(".//item")) == 0
+
+    async def test_unknown_function_returns_torznab_error(
+        self, test_client, reset_globals
+    ):
+        resp = await test_client.get("/api", params={"t": "movie", "q": "test"})
+        assert resp.status_code == 200
+        root = _parse_xml(resp.text)
+        assert root.tag == "error"
+        assert root.get("code") == "201"
 
 
 class TestConnectionTest:
     async def test_empty_search_returns_synthetic_result_without_api_call(
         self, test_client, reset_globals
     ):
-        """Prowlarr connection test returns a synthetic item (no API call)."""
+        """Sonarr/Prowlarr connection test returns a synthetic item (no API call)."""
         resp = await test_client.get("/api?t=search")
         assert resp.status_code == 200
         root = _parse_xml(resp.text)
         assert root.tag == "rss"
         assert len(root.findall(".//item")) >= 1
-        main_module.orion_client.search_streams.assert_not_called()
-
-
-class TestNotFoundHandling:
-    async def test_not_found_treated_as_empty_results(
-        self, test_client, reset_globals
-    ):
-        """Orionoid 'not found' is empty results, not an API error."""
-        main_module.orion_client.search_streams.return_value = {
-            "result": {
-                "status": "error",
-                "message": "The streams could not be found or do not exist yet.",
-            },
-        }
-        resp = await test_client.get("/api?t=movie&q=obscure")
-        assert resp.status_code == 200
-        root = _parse_xml(resp.text)
-        assert root.tag == "rss"
-        assert len(root.findall(".//item")) == 0
-        # Should NOT mark API as unhealthy
-        assert main_module.api_status["healthy"] is True
+        main_module.tvdb_client.resolve_episode.assert_not_called()
 
 
 class TestSearchUpdatesApiStatus:
-    async def test_success_sets_healthy_and_preserves_user_info(
-        self, test_client, mock_search, reset_globals
-    ):
+    async def test_success_sets_healthy(self, test_client, mock_search, reset_globals):
         main_module.api_status["healthy"] = False
-        main_module.api_status["user_info"] = {"username": "preserve_me"}
-        await test_client.get("/api?t=movie&q=test")
+        await test_client.get(
+            "/api", params={"t": "tvsearch", "tvdbid": 369988, "season": 8, "ep": 2}
+        )
         assert main_module.api_status["healthy"] is True
-        assert main_module.api_status["user_info"] == {"username": "preserve_me"}
 
-    async def test_failure_sets_unhealthy(self, test_client, reset_globals):
-        main_module.orion_client.search_streams.return_value = {
-            "result": {"status": "error", "message": "quota exceeded"},
-        }
-        await test_client.get("/api?t=movie&q=test")
+    async def test_failure_sets_unhealthy(self, test_client, mock_search, reset_globals):
+        mock_search.resolve_episode.side_effect = Exception("tvdb unavailable")
+        resp = await test_client.get(
+            "/api", params={"t": "tvsearch", "tvdbid": 369988, "season": 8, "ep": 2}
+        )
+        # Errors surface as a Torznab <error> body, not an HTTP failure.
+        assert resp.status_code == 200
+        assert _parse_xml(resp.text).tag == "error"
         assert main_module.api_status["healthy"] is False
-        assert "quota exceeded" in main_module.api_status["message"]
+        assert "tvdb unavailable" in main_module.api_status["message"]

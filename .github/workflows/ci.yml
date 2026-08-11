@@ -26,7 +26,7 @@ jobs:
 
       - name: Run tests
         env:
-          ORIONOID_USER_API_KEY: "test-key-for-ci"
+          TVDB_API_KEY: "test-key-for-ci"
         run: pytest -q
 
   docker:

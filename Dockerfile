@@ -4,10 +4,13 @@ FROM python:3.11-slim@sha256:90744cff8f32887f075c47d747a173ff333e9e98801667af93c
 WORKDIR /app
 
 # Install system dependencies
+# ffmpeg is required by yt-dlp to mux/remux the separate video and audio
+# streams dropout.tv (Vimeo OTT) serves
 RUN apt-get update && apt-get install -y \
     gcc \
     libxml2-dev \
     libxslt-dev \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy pyproject.toml first for dependency layer caching
