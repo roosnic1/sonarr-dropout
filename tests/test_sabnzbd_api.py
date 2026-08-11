@@ -43,6 +43,14 @@ class TestVersionAndCats:
         resp = await test_client.get("/sabnzbd/api", params={"mode": "fullstatus"})
         assert "diskspace1" in resp.json()["status"]
 
+    async def test_get_config_reports_category_and_complete_dir(
+        self, test_client, reset_globals
+    ):
+        resp = await test_client.get("/sabnzbd/api", params={"mode": "get_config"})
+        config = resp.json()["config"]
+        assert config["misc"]["complete_dir"]
+        assert any(cat["name"] == "tv" for cat in config["categories"])
+
 
 class TestAddUrl:
     async def test_addurl_queues_a_job(self, test_client, mock_search, reset_globals):
