@@ -52,6 +52,60 @@ class TestVersionAndCats:
         assert any(cat["name"] == "tv" for cat in config["categories"])
 
 
+class TestNzbContent:
+    def test_build_then_parse_roundtrips_ids(self):
+        content = sabnzbd_api.build_nzb(369988, 8, 2)
+        assert sabnzbd_api.parse_nzb_content(content) == {
+            "tvdbid": 369988, "season": 8, "episode": 2,
+        }
+
+    def test_parse_raises_on_garbage_content(self):
+        with pytest.raises(Exception):
+            sabnzbd_api.parse_nzb_content(b"not xml")
+
+    async def test_get_nzb_serves_parseable_content(self, test_client, reset_globals):
+        resp = await test_client.get("/sabnzbd/nzb/369988/8/2")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "application/x-nzb"
+        assert sabnzbd_api.parse_nzb_content(resp.content) == {
+            "tvdbid": 369988, "season": 8, "episode": 2,
+        }
+
+
+class TestAddFile:
+    async def test_addfile_queues_a_job(self, test_client, mock_search, reset_globals):
+        content = sabnzbd_api.build_nzb(369988, 8, 2)
+        resp = await test_client.post(
+            "/sabnzbd/api",
+            params={"mode": "addfile", "cat": "tv"},
+            files={"name": ("release.nzb", content, "application/x-nzb")},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] is True
+        nzo_id = body["nzo_ids"][0]
+        job = sabnzbd_api.job_manager.jobs[nzo_id]
+        assert (job.tvdbid, job.season, job.episode) == (369988, 8, 2)
+
+    async def test_addfile_without_upload_returns_error(
+        self, test_client, mock_search, reset_globals
+    ):
+        resp = await test_client.post("/sabnzbd/api", data={"mode": "addfile"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] is False
+
+    async def test_addfile_with_unparseable_content_returns_error(
+        self, test_client, mock_search, reset_globals
+    ):
+        resp = await test_client.post(
+            "/sabnzbd/api",
+            params={"mode": "addfile"},
+            files={"name": ("release.nzb", b"not an nzb", "application/x-nzb")},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] is False
+
+
 class TestAddUrl:
     async def test_addurl_queues_a_job(self, test_client, mock_search, reset_globals):
         resp = await test_client.get(
