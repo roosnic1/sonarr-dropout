@@ -1,4 +1,13 @@
-name: Build and Publish Docker Image
+name: Build, Publish & Release
+
+# Both jobs run directly off `push: tags:` (or workflow_dispatch) rather than
+# release.yml depending on this workflow via `workflow_run`. workflow_run
+# always executes the *default branch's* copy of the triggered workflow file,
+# ignoring whatever's on the tag's own commit -- so a release.yml change
+# (e.g. prerelease detection) pushed on a feature-branch tag would silently
+# run the stale main-branch version. Triggering both jobs off the same event
+# keeps them on the tag's own workflow content, and `needs:` still keeps the
+# release from being created if the image build/push fails.
 
 on:
   push:
@@ -21,12 +30,18 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+    outputs:
+      tag: ${{ steps.resolve_tag.outputs.tag }}
+
     steps:
+      - name: Resolve tag
+        id: resolve_tag
+        run: echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ steps.resolve_tag.outputs.tag }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -62,3 +77,67 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build-and-push.outputs.tag }}
+
+      - name: Extract version from tag
+        id: extract_version
+        env:
+          TAG: ${{ needs.build-and-push.outputs.tag }}
+        run: |
+          VERSION=${TAG#v}
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "PRERELEASE=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "PRERELEASE=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION=${{ steps.extract_version.outputs.VERSION }}
+          NOTES=$(awk -v ver="[$VERSION]" 'BEGIN{found=0} /^## \[/{if(found) exit; if($0 ~ ver) found=1} found' CHANGELOG.md)
+          echo "NOTES<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.build-and-push.outputs.tag }}
+          release_name: Release ${{ steps.extract_version.outputs.VERSION }}
+          body: |
+            ## Docker Image
+
+            Pull the latest image:
+            ```bash
+            docker pull ghcr.io/roosnic1/sonarr-dropout:latest
+            ```
+
+            Or use this specific version:
+            ```bash
+            docker pull ghcr.io/roosnic1/sonarr-dropout:${{ steps.extract_version.outputs.VERSION }}
+            ```
+
+            ## Changes
+
+            ${{ steps.release_notes.outputs.NOTES }}
+
+            ## Quick Start
+
+            See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation and configuration instructions.
+          draft: false
+          prerelease: ${{ steps.extract_version.outputs.PRERELEASE }}
