@@ -39,7 +39,7 @@ services:
       #   machine dropout
       #     login you@example.com
       #     password yourpassword
-      - ./netrc:/config/.netrc:ro
+      - ./config/.netrc:/config/.netrc:ro
       # Must be the SAME host path Sonarr's download client mounts as its
       # own downloads folder, so the "storage" path this service reports
       # resolves inside Sonarr's own filesystem view too.
