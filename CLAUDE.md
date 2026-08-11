@@ -13,7 +13,8 @@ A FastAPI app that exposes a Torznab/Newznab-compatible indexer API (as consumed
 ## Commands
 
 ```bash
-pip install ".[dev]"          # install runtime + dev deps (pytest, ruff)
+pip install ".[dev]"          # install runtime + dev deps (pytest, ruff, pre-commit)
+pre-commit install            # one-time: run ruff automatically on `git commit`
 ruff check .                  # lint (CI runs this)
 pytest -q                     # run full test suite
 pytest tests/test_api.py -q   # run a single test file
