@@ -136,21 +136,25 @@ class TorznabBuilder:
             enclosure.set("length", str(item.size))
             enclosure.set("type", "application/x-nzb")
 
-            torznab_ns = "{http://torznab.com/schemas/2015/feed}"
+            # Sonarr/Prowlarr add this indexer as a Newznab indexer (it emulates
+            # SABnzbd and uses x-nzb enclosures, not a torrent client), and their
+            # NewznabRssParser.GetCategory() only recognizes <newznab:attr> --
+            # <torznab:attr> is invisible to it and categories parse as empty.
+            newznab_ns = "{http://www.newznab.com/DTD/2010/feeds/attributes/}"
 
-            attr = etree.SubElement(elem, f"{torznab_ns}attr")
+            attr = etree.SubElement(elem, f"{newznab_ns}attr")
             attr.set("name", "category")
             attr.set("value", str(TorznabBuilder.CATEGORY_TV_HD))
 
-            attr = etree.SubElement(elem, f"{torznab_ns}attr")
+            attr = etree.SubElement(elem, f"{newznab_ns}attr")
             attr.set("name", "size")
             attr.set("value", str(item.size))
 
-            attr = etree.SubElement(elem, f"{torznab_ns}attr")
+            attr = etree.SubElement(elem, f"{newznab_ns}attr")
             attr.set("name", "season")
             attr.set("value", str(item.season))
 
-            attr = etree.SubElement(elem, f"{torznab_ns}attr")
+            attr = etree.SubElement(elem, f"{newznab_ns}attr")
             attr.set("name", "episode")
             attr.set("value", str(item.episode))
 

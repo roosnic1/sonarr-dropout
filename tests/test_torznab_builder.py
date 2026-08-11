@@ -6,7 +6,7 @@ from lxml import etree
 
 from torznab_builder import ReleaseItem, TorznabBuilder
 
-TORZNAB_NS = "http://torznab.com/schemas/2015/feed"
+NEWZNAB_NS = "http://www.newznab.com/DTD/2010/feeds/attributes/"
 
 SAMPLE_ITEM = ReleaseItem(
     title="Game Changer S08E02 Rulette 2",
@@ -21,8 +21,8 @@ def _parse_xml(text: str) -> etree._Element:
     return etree.fromstring(text.encode())
 
 
-def _get_torznab_attr(item: etree._Element, name: str) -> str | None:
-    for attr in item.findall(f"{{{TORZNAB_NS}}}attr"):
+def _get_newznab_attr(item: etree._Element, name: str) -> str | None:
+    for attr in item.findall(f"{{{NEWZNAB_NS}}}attr"):
         if attr.get("name") == name:
             return attr.get("value")
     return None
@@ -37,9 +37,9 @@ class TestBuildSearchResults:
         assert item.find("link").text == SAMPLE_ITEM.link
         assert item.find("enclosure").get("url") == SAMPLE_ITEM.link
         assert item.find("enclosure").get("type") == "application/x-nzb"
-        assert _get_torznab_attr(item, "season") == "8"
-        assert _get_torznab_attr(item, "episode") == "2"
-        assert _get_torznab_attr(item, "category") == str(TorznabBuilder.CATEGORY_TV_HD)
+        assert _get_newznab_attr(item, "season") == "8"
+        assert _get_newznab_attr(item, "episode") == "2"
+        assert _get_newznab_attr(item, "category") == str(TorznabBuilder.CATEGORY_TV_HD)
 
     def test_empty_items_produces_no_items(self):
         xml = TorznabBuilder.build_search_results([], "tvsearch")
