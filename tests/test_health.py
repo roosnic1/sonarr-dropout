@@ -1,7 +1,7 @@
 """Tests for the /health endpoint and passive API status tracking."""
 
-import main as main_module
-import sabnzbd_api
+import sonarr_dropout.main as main_module
+import sonarr_dropout.sabnzbd_api as sabnzbd_api
 
 
 class TestHealthEndpoint:
