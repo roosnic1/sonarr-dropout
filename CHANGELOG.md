@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-08-11
+
+### Fixed
+- Implemented the SABnzbd `get_config` API mode, which Sonarr's SABnzbd download client calls during its connection test (and again on every `GetStatus`) to read the complete-download directory and validate the configured category. It was previously unimplemented, so Sonarr's "Test" always failed with a "missing mode" 400 error. The response reports an absolute `misc.complete_dir` (Sonarr falls back to a `fullstatus` call if it isn't rooted) and a `tv` category whose `dir` doesn't end in `*` (a trailing `*` reads to Sonarr as "job folders disabled" and raises a validation warning)
+
 ## [0.1.1] - 2026-08-11
 
 ### Fixed
@@ -42,5 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TVDB_API_KEY` (required) and optional `TVDB_PIN` for TheTVDB v4 API access
 - `PUBLIC_URL`, `NETRC_PATH`, `DOWNLOADS_DIR`, `SERVICE_PORT`/`SERVICE_HOST`, `PROWLARR_API_KEY`, `LOG_LEVEL`, `CACHE_TTL` via environment variables / `.env`
 
+[0.1.2]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.2
 [0.1.1]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.1
 [0.1.0]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.0
