@@ -267,7 +267,15 @@ async def search_dropout(
             if not source:
                 continue
 
-            title = f"{series_title} S{season:02d}E{ep_number:02d} {source['name']}".strip()
+            # "1080p WEB-DL English" isn't describing a real encode -- it's
+            # there so Sonarr's title parser (which drives its Quality/
+            # Language columns and interactive-search tooltip, independent of
+            # any newznab:attr) doesn't report them as Unknown. dropout.tv is
+            # consistently HD and English-only, so the claim is accurate.
+            title = (
+                f"{series_title} S{season:02d}E{ep_number:02d} "
+                f"{source['name']} 1080p WEB-DL English"
+            ).strip()
             link = f"{settings.public_url}/sabnzbd/nzb/{tvdbid}/{season}/{ep_number}"
             items.append(
                 ReleaseItem(
@@ -276,6 +284,7 @@ async def search_dropout(
                     link=link,
                     season=season,
                     episode=ep_number,
+                    tvdbid=tvdbid,
                 )
             )
     except Exception as e:

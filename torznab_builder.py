@@ -23,6 +23,7 @@ class ReleaseItem:
     link: str
     season: int
     episode: int
+    tvdbid: int = 0
     size: int = 0
     pub_date: Optional[datetime] = None
 
@@ -145,6 +146,15 @@ class TorznabBuilder:
             attr = etree.SubElement(elem, f"{newznab_ns}attr")
             attr.set("name", "category")
             attr.set("value", str(TorznabBuilder.CATEGORY_TV_HD))
+
+            # Sonarr's ParsingService matches a release straight to the series
+            # it searched for when this equals SearchCriteria.Series.TvdbId --
+            # without it, matching falls back to fuzzy-parsing the series name
+            # out of the title, which fails whenever Sonarr's tvdbid-only ID
+            # search omits the `q` param (see main.py's search_dropout()).
+            attr = etree.SubElement(elem, f"{newznab_ns}attr")
+            attr.set("name", "tvdbid")
+            attr.set("value", str(item.tvdbid))
 
             attr = etree.SubElement(elem, f"{newznab_ns}attr")
             attr.set("name", "size")

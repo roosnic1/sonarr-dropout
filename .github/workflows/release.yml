@@ -23,7 +23,14 @@ jobs:
         id: extract_version
         env:
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-        run: echo "VERSION=${HEAD_BRANCH#v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=${HEAD_BRANCH#v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" == *-* ]]; then
+            echo "PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Generate release notes
         id: release_notes
@@ -62,4 +69,4 @@ jobs:
             
             See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation and configuration instructions.
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.extract_version.outputs.PRERELEASE }}

@@ -14,6 +14,7 @@ SAMPLE_ITEM = ReleaseItem(
     link="http://localhost:8080/sabnzbd/nzb/369988/8/2",
     season=8,
     episode=2,
+    tvdbid=369988,
 )
 
 
@@ -40,6 +41,7 @@ class TestBuildSearchResults:
         assert _get_newznab_attr(item, "season") == "8"
         assert _get_newznab_attr(item, "episode") == "2"
         assert _get_newznab_attr(item, "category") == str(TorznabBuilder.CATEGORY_TV_HD)
+        assert _get_newznab_attr(item, "tvdbid") == "369988"
 
     def test_empty_items_produces_no_items(self):
         xml = TorznabBuilder.build_search_results([], "tvsearch")

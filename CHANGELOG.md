@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3-rc1] - 2026-08-11
+
+### Fixed
+- Interactive search results showed "Unknown episode or series" plus Unknown language/quality in Sonarr's Scene Info tooltip. Sonarr's tvdbid-based tvsearch (used for interactive search) sends `tvdbid`/`season`/`ep` without `q`, so the release title's series name fell back to the placeholder `tvdb-<id>`, which can never fuzzy-match a library series by title; Sonarr's parser also derives quality/language purely from the release title text, which carried neither. Releases now carry a `tvdbid` newznab:attr, which Sonarr's `ParsingService` matches directly against the searched series independent of the title text, plus literal `1080p WEB-DL English` tokens in the title so Sonarr's parser resolves quality/language instead of reporting them as unknown
+
+### Changed
+- `release.yml` now marks the GitHub Release as a pre-release when the tag's version contains a `-` (e.g. `v0.1.3-rc1`), so test builds tagged from feature branches ahead of a real release don't show up as full releases
+
 ## [0.1.2] - 2026-08-11
 
 ### Fixed

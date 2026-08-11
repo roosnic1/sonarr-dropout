@@ -4,9 +4,18 @@ from lxml import etree
 
 import main as main_module
 
+NEWZNAB_NS = "http://www.newznab.com/DTD/2010/feeds/attributes/"
+
 
 def _parse_xml(text: str) -> etree._Element:
     return etree.fromstring(text.encode())
+
+
+def _get_newznab_attr(item: etree._Element, name: str) -> str | None:
+    for attr in item.findall(f"{{{NEWZNAB_NS}}}attr"):
+        if attr.get("name") == name:
+            return attr.get("value")
+    return None
 
 
 class TestCapabilities:
@@ -38,6 +47,14 @@ class TestSearch:
         assert "S08E02" in item.find("title").text
         assert "Rulette 2" in item.find("title").text
         assert "/sabnzbd/nzb/369988/8/2" in item.find("link").text
+
+        # Sonarr's Parser reads quality/language from the title text itself
+        # (independent of any newznab:attr), and matches series by tvdbid
+        # attr rather than fuzzy-parsing the series name out of the title.
+        assert "1080p" in item.find("title").text
+        assert "WEB-DL" in item.find("title").text
+        assert "English" in item.find("title").text
+        assert _get_newznab_attr(item, "tvdbid") == "369988"
 
     async def test_season_pack_resolves_every_episode(
         self, test_client, mock_search, reset_globals
