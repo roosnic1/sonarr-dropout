@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-08-11
+
+### Fixed
+- Release XML attributes (`category`, `size`, `season`, `episode`) are now emitted in the `newznab` namespace instead of `torznab`. Sonarr/Prowlarr add this service as a Newznab indexer (it emulates SABnzbd and serves `application/x-nzb` enclosures), and their `NewznabRssParser.GetCategory()` only recognizes `newznab:attr` elements -- `torznab:attr` was invisible to it, so every release (including the synthetic connection-test result) parsed with no category and got silently dropped, breaking Prowlarr's app-sync to Sonarr with a "no results in the configured categories" error
+
 ## [0.1.0] - 2026-08-11
 
 ### Added
@@ -37,4 +42,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TVDB_API_KEY` (required) and optional `TVDB_PIN` for TheTVDB v4 API access
 - `PUBLIC_URL`, `NETRC_PATH`, `DOWNLOADS_DIR`, `SERVICE_PORT`/`SERVICE_HOST`, `PROWLARR_API_KEY`, `LOG_LEVEL`, `CACHE_TTL` via environment variables / `.env`
 
+[0.1.1]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.1
 [0.1.0]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.0
