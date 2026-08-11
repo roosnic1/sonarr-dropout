@@ -231,6 +231,10 @@ sonarr-dropout/
 - [Issues & Support](https://github.com/roosnic1/sonarr-dropout/issues)
 - [Changelog](https://github.com/roosnic1/sonarr-dropout/blob/main/CHANGELOG.md)
 
+## Acknowledgments
+
+This project started as a fork of [jamtur01/prowlarr-orionoid](https://github.com/jamtur01/prowlarr-orionoid), which provided the original Torznab/SABnzbd scaffolding this service is built on. Thank you to [@jamtur01](https://github.com/jamtur01) for that foundation.
+
 ## License
 
 This project is provided as-is for educational and personal use. Please respect dropout.tv's and TheTVDB's terms of service.
