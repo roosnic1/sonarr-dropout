@@ -124,7 +124,7 @@ Resolves a single episode, or every episode in a season if `ep` is omitted. A se
 
 ### SABnzbd-compatible download client
 ```
-GET/POST /sabnzbd/api?mode=addurl|queue|history|version|get_cats|fullstatus
+GET/POST /sabnzbd/api?mode=addurl|queue|history|version|get_cats|get_config|fullstatus
 ```
 Implements the subset of the SABnzbd API Sonarr's download client integration needs. Not meant to be used directly.
 

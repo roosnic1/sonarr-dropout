@@ -134,6 +134,36 @@ def _full_status() -> dict:
     }
 
 
+def _get_config() -> dict:
+    # Sonarr's SABnzbd client calls get_config on Test/add to read the
+    # complete_dir (must be absolute or it falls back to fullstatus) and to
+    # confirm the configured category exists with job folders enabled (a
+    # category "dir" ending in "*" would trigger a warning in Sonarr).
+    downloads_dir = str(job_manager.downloads_dir if job_manager else Path(settings.downloads_dir))
+    return {
+        "config": {
+            "misc": {
+                "complete_dir": downloads_dir,
+                "tv_categories": [],
+                "enable_tv_sorting": False,
+                "movie_categories": [],
+                "enable_movie_sorting": False,
+                "date_categories": [],
+                "enable_date_sorting": False,
+                "pre_check": False,
+                "history_retention": "0",
+                "history_retention_option": "all",
+                "history_retention_number": 0,
+            },
+            "categories": [
+                {"name": "tv", "dir": "", "priority": 0, "pp": "", "script": "None"}
+            ],
+            "servers": [],
+            "sorters": [],
+        }
+    }
+
+
 def _handle_addurl(params: Dict[str, str]) -> dict:
     link = params.get("name", "")
     try:
@@ -224,6 +254,9 @@ async def sabnzbd_api(request: Request):
 
     if mode == "fullstatus":
         return JSONResponse(_full_status())
+
+    if mode == "get_config":
+        return JSONResponse(_get_config())
 
     if job_manager is None:
         return JSONResponse(
