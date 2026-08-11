@@ -2,8 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/roosnic1/sonarr-dropout/releases)
 [![CI Build](https://github.com/roosnic1/sonarr-dropout/actions/workflows/ci.yml/badge.svg)](https://github.com/roosnic1/sonarr-dropout/actions/workflows/ci.yml)
-[![Docker Pulls](https://img.shields.io/docker/pulls/roosnic1/sonarr-dropout)](https://hub.docker.com/r/roosnic1/sonarr-dropout)
-[![Docker Image Size](https://img.shields.io/docker/image-size/roosnic1/sonarr-dropout/latest)](https://hub.docker.com/r/roosnic1/sonarr-dropout)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-sonarr--dropout-blue.svg)](https://github.com/roosnic1/sonarr-dropout/pkgs/container/sonarr-dropout)
 
 A bridge that lets [Sonarr](https://sonarr.tv/) treat [dropout.tv](https://www.dropout.tv/) like a regular indexer/download client pair. It has two halves:
 
@@ -27,7 +26,7 @@ A bridge that lets [Sonarr](https://sonarr.tv/) treat [dropout.tv](https://www.d
 ```yaml
 services:
   sonarr-dropout:
-    image: roosnic1/sonarr-dropout:latest
+    image: ghcr.io/roosnic1/sonarr-dropout:latest
     container_name: sonarr-dropout
     restart: unless-stopped
     ports:
@@ -228,7 +227,7 @@ sonarr-dropout/
 ## Links
 
 - [GitHub Repository](https://github.com/roosnic1/sonarr-dropout)
-- [Docker Hub](https://hub.docker.com/r/roosnic1/sonarr-dropout)
+- [Docker Image (GHCR)](https://github.com/roosnic1/sonarr-dropout/pkgs/container/sonarr-dropout)
 - [Issues & Support](https://github.com/roosnic1/sonarr-dropout/issues)
 - [Changelog](https://github.com/roosnic1/sonarr-dropout/blob/main/CHANGELOG.md)
 
