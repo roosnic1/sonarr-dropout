@@ -1,9 +1,9 @@
-# Prowlarr-Orionoid Bridge
+# Sonarr-Dropout
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/jamtur01/prowlarr-orionoid/releases)
-[![CI Build](https://github.com/jamtur01/prowlarr-orionoid/actions/workflows/ci.yml/badge.svg)](https://github.com/jamtur01/prowlarr-orionoid/actions/workflows/ci.yml)
-[![Docker Pulls](https://img.shields.io/docker/pulls/jamtur01/prowlarr-orionoid)](https://hub.docker.com/r/jamtur01/prowlarr-orionoid)
-[![Docker Image Size](https://img.shields.io/docker/image-size/jamtur01/prowlarr-orionoid/latest)](https://hub.docker.com/r/jamtur01/prowlarr-orionoid)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/roosnic1/sonarr-dropout/releases)
+[![CI Build](https://github.com/roosnic1/sonarr-dropout/actions/workflows/ci.yml/badge.svg)](https://github.com/roosnic1/sonarr-dropout/actions/workflows/ci.yml)
+[![Docker Pulls](https://img.shields.io/docker/pulls/roosnic1/sonarr-dropout)](https://hub.docker.com/r/roosnic1/sonarr-dropout)
+[![Docker Image Size](https://img.shields.io/docker/image-size/roosnic1/sonarr-dropout/latest)](https://hub.docker.com/r/roosnic1/sonarr-dropout)
 
 A Torznab/Newznab compatible indexer service that allows [Prowlarr](https://prowlarr.com/) to use [Orionoid](https://orionoid.com/) as an indexer. This service translates between Prowlarr's indexer protocol and Orionoid's API.
 
@@ -24,10 +24,10 @@ A Torznab/Newznab compatible indexer service that allows [Prowlarr](https://prow
 
 ```bash
 docker run -d \
-  --name prowlarr-orionoid \
+  --name sonarr-dropout \
   -p 8080:8080 \
   -e ORIONOID_USER_API_KEY=your_user_api_key \
-  jamtur01/prowlarr-orionoid:latest
+  roosnic1/sonarr-dropout:latest
 ```
 
 ### Using Docker Compose
@@ -36,9 +36,9 @@ Create a `docker-compose.yml` file:
 
 ```yaml
 services:
-  prowlarr-orionoid:
-    image: jamtur01/prowlarr-orionoid:latest
-    container_name: prowlarr-orionoid
+  sonarr-dropout:
+    image: roosnic1/sonarr-dropout:latest
+    container_name: sonarr-dropout
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -138,14 +138,14 @@ Search for movies
 ### Using Docker
 
 ```bash
-git clone https://github.com/jamtur01/prowlarr-orionoid.git
-cd prowlarr-orionoid
-docker build -t prowlarr-orionoid .
+git clone https://github.com/roosnic1/sonarr-dropout.git
+cd sonarr-dropout
+docker build -t sonarr-dropout .
 docker run -d \
-  --name prowlarr-orionoid \
+  --name sonarr-dropout \
   -p 8080:8080 \
   -e ORIONOID_USER_API_KEY=your_user_api_key \
-  prowlarr-orionoid
+  sonarr-dropout
 ```
 
 ### Running Locally
@@ -154,8 +154,8 @@ docker run -d \
 
 2. Clone the repository:
    ```bash
-   git clone https://github.com/jamtur01/prowlarr-orionoid.git
-   cd prowlarr-orionoid
+   git clone https://github.com/roosnic1/sonarr-dropout.git
+   cd sonarr-dropout
    ```
 
 3. Install dependencies:
@@ -178,7 +178,7 @@ docker run -d \
 ### Service won't start
 - Check that your Orionoid API keys are correct
 - Verify the port isn't already in use
-- Check Docker logs: `docker logs prowlarr-orionoid`
+- Check Docker logs: `docker logs sonarr-dropout`
 
 ### No results returned
 - Verify your Orionoid account has API access
@@ -199,7 +199,7 @@ docker run -d \
 
 ### Project Structure
 ```
-prowlarr-orionoid/
+sonarr-dropout/
 ├── main.py              # FastAPI application
 ├── orionoid_client.py   # Orionoid API client
 ├── torznab_builder.py   # Torznab XML response builder
@@ -223,10 +223,10 @@ prowlarr-orionoid/
 
 ## Links
 
-- [GitHub Repository](https://github.com/jamtur01/prowlarr-orionoid)
-- [Docker Hub](https://hub.docker.com/r/jamtur01/prowlarr-orionoid)
-- [Issues & Support](https://github.com/jamtur01/prowlarr-orionoid/issues)
-- [Changelog](https://github.com/jamtur01/prowlarr-orionoid/blob/main/CHANGELOG.md)
+- [GitHub Repository](https://github.com/roosnic1/sonarr-dropout)
+- [Docker Hub](https://hub.docker.com/r/roosnic1/sonarr-dropout)
+- [Issues & Support](https://github.com/roosnic1/sonarr-dropout/issues)
+- [Changelog](https://github.com/roosnic1/sonarr-dropout/blob/main/CHANGELOG.md)
 
 ## License
 

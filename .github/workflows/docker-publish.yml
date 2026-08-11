@@ -13,7 +13,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: jamtur01/prowlarr-orionoid
+  IMAGE_NAME: roosnic1/sonarr-dropout
 
 jobs:
   build-and-push:

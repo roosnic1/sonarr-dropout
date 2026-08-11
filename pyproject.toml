@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "prowlarr-orionoid"
+name = "sonarr-dropout"
 dynamic = ["version"]
-description = "Torznab/Newznab compatible indexer bridge for Orionoid"
+description = "Torznab/Newznab compatible indexer bridge for dropout.tv"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"

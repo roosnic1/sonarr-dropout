@@ -46,12 +46,12 @@ jobs:
             
             Pull the latest image:
             ```bash
-            docker pull jamtur01/prowlarr-orionoid:latest
+            docker pull roosnic1/sonarr-dropout:latest
             ```
             
             Or use this specific version:
             ```bash
-            docker pull jamtur01/prowlarr-orionoid:${{ steps.extract_version.outputs.VERSION }}
+            docker pull roosnic1/sonarr-dropout:${{ steps.extract_version.outputs.VERSION }}
             ```
             
             ## Changes

@@ -47,6 +47,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: false
-          tags: prowlarr-orionoid:test
+          tags: sonarr-dropout:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
