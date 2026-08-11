@@ -121,8 +121,8 @@ class TorznabBuilder:
             guid_elem.text = item.guid
             guid_elem.set("isPermaLink", "false")
 
-            # Link points at our own SABnzbd-emulation addurl target, not
-            # dropout.tv directly -- see main.py's search_dropout().
+            # Link points at our own nzb-serving endpoint, not dropout.tv
+            # directly -- see main.py's search_dropout().
             etree.SubElement(elem, "link").text = item.link
             etree.SubElement(elem, "comments").text = item.link
 

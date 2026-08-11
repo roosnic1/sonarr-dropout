@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3-rc2] - 2026-08-11
+
+### Fixed
+- Grabbing a release in Sonarr failed with a 404 and "Downloading nzb file ... failed since it no longer exists". Releases are advertised with enclosure `type="application/x-nzb"`, which makes Sonarr's usenet download client `GET` the release link itself to fetch nzb bytes *before* ever calling the SABnzbd API -- but no route served that link, since the original design assumed (incorrectly) that Sonarr would only ever hand the link back to `addurl`. Added a `GET /sabnzbd/nzb/{tvdbid}/{season}/{episode}` route serving a placeholder nzb (tvdbid/season/episode encoded in `<meta>` tags) plus a `mode=addfile` handler that reads those ids back out of the uploaded bytes and queues the job the same way `addurl` does
+
 ## [0.1.3-rc1] - 2026-08-11
 
 ### Fixed

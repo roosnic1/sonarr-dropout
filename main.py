@@ -226,9 +226,10 @@ async def search_dropout(
 ) -> List[ReleaseItem]:
     """Resolve a Sonarr search into a list of dropout.tv releases via TVDB.
 
-    Each release's link encodes tvdbid/season/episode -- it's never fetched
-    directly, only parsed back out by sabnzbd_api's addurl handler once
-    Sonarr grabs the release.
+    Each release's link encodes tvdbid/season/episode. Sonarr's usenet
+    download client GETs it directly to fetch nzb bytes (see
+    sabnzbd_api.get_nzb) before uploading them back to us via `addfile`,
+    which parses the ids back out (sabnzbd_api.parse_nzb_content).
     """
     global last_successful_search
 
