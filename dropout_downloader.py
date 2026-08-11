@@ -28,6 +28,11 @@ async def download(url: str, dest_dir: Path, netrc_path: str) -> Path:
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "subtitleslangs": ["en"],
+        "merge_output_format": "mkv",
+        "postprocessors": [{"key": "FFmpegEmbedSubtitle"}],
     }
 
     def _run():
