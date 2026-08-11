@@ -21,7 +21,9 @@ jobs:
 
       - name: Extract version from tag
         id: extract_version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        env:
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: echo "VERSION=${HEAD_BRANCH#v}" >> $GITHUB_OUTPUT
 
       - name: Generate release notes
         id: release_notes
