@@ -5,8 +5,6 @@ on:
     workflows: ["Build and Publish Docker Image"]
     types:
       - completed
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -46,12 +44,12 @@ jobs:
             
             Pull the latest image:
             ```bash
-            docker pull jamtur01/prowlarr-orionoid:latest
+            docker pull ghcr.io/roosnic1/sonarr-dropout:latest
             ```
-            
+
             Or use this specific version:
             ```bash
-            docker pull jamtur01/prowlarr-orionoid:${{ steps.extract_version.outputs.VERSION }}
+            docker pull ghcr.io/roosnic1/sonarr-dropout:${{ steps.extract_version.outputs.VERSION }}
             ```
             
             ## Changes

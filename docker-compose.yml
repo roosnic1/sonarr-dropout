@@ -1,32 +1,53 @@
 services:
-  prowlarr-orionoid:
-    image: prowlarr-orionoid:latest
+  sonarr-dropout:
+    image: sonarr-dropout:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: prowlarr-orionoid
+    container_name: sonarr-dropout
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      # REQUIRED: Orionoid API credentials
-      # User key - get this from your Orionoid account settings
-      - ORIONOID_USER_API_KEY=YOUR_ORIONOID_USER_API_KEY_HERE
-      
+      # REQUIRED: TheTVDB v4 API credentials
+      # Get an API key from https://thetvdb.com/dashboard/account/apikey
+      # -- ${VAR:-default} pulls from a .env file next to this compose file
+      # if one exists (gitignored); otherwise falls back to the placeholder
+      # below, so this stays safe to publish as-is.
+      - TVDB_API_KEY=${TVDB_API_KEY:-YOUR_TVDB_API_KEY_HERE}
+      # OPTIONAL: subscriber PIN, if your TVDB account needs one
+      # - TVDB_PIN=${TVDB_PIN:-YOUR_TVDB_PIN_HERE}
+
+      # REQUIRED: base URL this container is reachable at from Sonarr/Prowlarr
+      # -- baked into the Torznab release links this service returns
+      - PUBLIC_URL=${PUBLIC_URL:-http://sonarr-dropout:8080}
+
+      # yt-dlp download configuration -- paths *inside the container*, see
+      # the volumes section below for how they map to the host
+      - NETRC_PATH=${NETRC_PATH:-/config/.netrc}
+      - DOWNLOADS_DIR=${DOWNLOADS_DIR:-/downloads}
+
       # OPTIONAL: Service configuration
-      - SERVICE_PORT=8080
-      - SERVICE_HOST=0.0.0.0
-      
-      # OPTIONAL: Prowlarr API key (if you want to restrict access)
-      # - PROWLARR_API_KEY=YOUR_PROWLARR_API_KEY_HERE
-      
-      # OPTIONAL: Search limits
-      - DEFAULT_SEARCH_LIMIT=100
-      - MAX_SEARCH_LIMIT=1000
-      
+      - SERVICE_PORT=${SERVICE_PORT:-8080}
+      - SERVICE_HOST=${SERVICE_HOST:-0.0.0.0}
+
+      # OPTIONAL: Prowlarr/Sonarr API key (if you want to restrict access)
+      # - PROWLARR_API_KEY=${PROWLARR_API_KEY:-YOUR_PROWLARR_API_KEY_HERE}
+
       # OPTIONAL: Logging
-      - LOG_LEVEL=INFO
-    
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+    volumes:
+      # dropout.tv credentials for yt-dlp, e.g.:
+      #   machine dropout
+      #     login you@example.com
+      #     password yourpassword
+      - ./config/.netrc:/config/.netrc:ro
+      # Must be the SAME host path Sonarr's download client mounts as its
+      # own downloads folder, so the "storage" path this service reports
+      # resolves inside Sonarr's own filesystem view too.
+      - ./downloads:/downloads
+
     # Health check -- verify HTTP server is listening (no API calls)
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8080/health')"]
@@ -34,16 +55,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    
-    # Optional: Mount a .env file instead of using environment variables
-    # env_file:
-    #   - .env
-    
-    # Optional: If you want to run this alongside Prowlarr
-    # networks:
-    #   - prowlarr-network
-
-# Optional: Create a network if running alongside Prowlarr
-# networks:
-#   prowlarr-network:
-#     external: true

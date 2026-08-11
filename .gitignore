@@ -64,3 +64,6 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+
+#yt-dlp
+.netrc

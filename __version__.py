@@ -1,4 +1,4 @@
-"""Version information for prowlarr-orionoid."""
+"""Version information for sonarr-dropout."""
 
-__version__ = "1.2.0"
+__version__ = "0.1.0"
 __version_info__ = tuple(int(part) for part in __version__.split("."))

@@ -1,18 +1,18 @@
-import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+import sabnzbd_api
 from __version__ import __version__
 from config import settings
-from orionoid_client import OrionoidClient
-from torznab_builder import TorznabBuilder
+from torznab_builder import ReleaseItem, TorznabBuilder
+from tvdb_client import TVDBClient
 
 # Configure logging
 logging.basicConfig(
@@ -23,107 +23,62 @@ logger = logging.getLogger(__name__)
 
 
 # Global client instance and metrics
-orion_client: Optional[OrionoidClient] = None
+tvdb_client: Optional[TVDBClient] = None
 startup_time: Optional[float] = None
 last_successful_search: Optional[datetime] = None
 
-# Passive API status -- updated by lifespan() and search_orionoid()
-api_status: Dict[str, Any] = {
+# Passive API status -- updated by lifespan() and search_dropout()
+api_status = {
     "healthy": False,
     "message": "Not yet checked",
     "last_checked": None,
-    "user_info": None,
 }
 
 
-_SENTINEL = object()
-
-
-def _update_api_status(
-    healthy: bool,
-    message: str,
-    user_info: Any = _SENTINEL,
-):
-    """Update the passive api_status dict from startup or search results.
-
-    Pass user_info explicitly to overwrite; omit it to preserve the
-    existing value (e.g. startup-populated username/quota).
-    """
+def _update_api_status(healthy: bool, message: str):
     api_status["healthy"] = healthy
     api_status["message"] = message
     api_status["last_checked"] = datetime.now(timezone.utc).isoformat()
-    if user_info is not _SENTINEL:
-        api_status["user_info"] = user_info
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global orion_client, startup_time
-    orion_client = OrionoidClient(
-        settings.orionoid_app_api_key,
-        settings.orionoid_user_api_key,
+    global tvdb_client, startup_time
+    tvdb_client = TVDBClient(
+        settings.tvdb_api_key,
+        settings.tvdb_pin,
+        cache_ttl=settings.cache_ttl,
     )
     startup_time = time.time()
-    logger.info("Orionoid client initialized")
+    logger.info("TVDB client initialized")
 
-    # Test connection and seed api_status
     try:
-        await orion_client.__aenter__()
-        user_info = await orion_client.get_user_info()
-
-        if user_info.get("result", {}).get("status") == "success":
-            user_data = user_info.get("data", {})
-            username = user_data.get("email", "Unknown")
-            is_premium = (
-                user_data.get("subscription", {})
-                .get("package", {})
-                .get("premium", False)
-            )
-            remaining = (
-                user_data.get("requests", {})
-                .get("streams", {})
-                .get("daily", {})
-                .get("remaining", 0)
-            )
-            logger.info(
-                "Connected to Orionoid. User: %s, Premium: %s, "
-                "Daily requests remaining: %s",
-                username, is_premium, f"{remaining:,}",
-            )
-            _update_api_status(
-                healthy=True,
-                message="Connected to Orionoid API",
-                user_info={
-                    "username": username,
-                    "premium": is_premium,
-                    "apiCallsRemaining": remaining,
-                },
-            )
-        else:
-            error_msg = user_info.get("result", {}).get(
-                "message", "Unknown error"
-            )
-            logger.warning("Orionoid API returned error: %s", error_msg)
-            _update_api_status(healthy=False, message=error_msg)
+        await tvdb_client.__aenter__()
+        await tvdb_client.verify_credentials()
+        logger.info("Connected to TheTVDB API")
+        _update_api_status(healthy=True, message="Connected to TheTVDB API")
     except Exception as e:
-        logger.error("Failed to connect to Orionoid: %s", e)
+        logger.error("Failed to connect to TheTVDB: %s", e)
         _update_api_status(healthy=False, message=str(e))
+
+    sabnzbd_api.init_job_manager(tvdb_client, settings.netrc_path, settings.downloads_dir)
 
     yield
 
     # Shutdown
-    if orion_client:
-        await orion_client.__aexit__(None, None, None)
-    logger.info("Orionoid client closed")
+    if tvdb_client:
+        await tvdb_client.__aexit__(None, None, None)
+    logger.info("TVDB client closed")
 
 
 app = FastAPI(
-    title="Prowlarr-Orionoid Bridge",
-    description="A Torznab/Newznab compatible indexer for Orionoid",
+    title="sonarr-dropout",
+    description="A Torznab/Newznab compatible indexer bridging Sonarr to dropout.tv",
     version=__version__,
     lifespan=lifespan
 )
+app.include_router(sabnzbd_api.router, prefix="/sabnzbd")
 
 
 def check_api_key(apikey: Optional[str] = None):
@@ -136,14 +91,13 @@ def check_api_key(apikey: Optional[str] = None):
 async def root():
     """Root endpoint"""
     return {
-        "title": "Prowlarr-Orionoid Bridge",
+        "title": "sonarr-dropout",
         "version": __version__,
         "endpoints": {
             "capabilities": "/api?t=caps",
-            "search": "/api?t=search&q=query",
-            "tv-search": "/api?t=tvsearch&q=query&season=1&ep=1",
-            "movie-search": "/api?t=movie&q=query",
-            "health": "/health"
+            "tv-search": "/api?t=tvsearch&tvdbid=12345&season=1&ep=1",
+            "health": "/health",
+            "sabnzbd_download_client": "/sabnzbd/api",
         }
     }
 
@@ -152,7 +106,7 @@ async def root():
 async def health_check():
     """Health check endpoint -- reads passive state, never calls the API."""
     # 503 only when the service is fundamentally broken
-    if not orion_client:
+    if not tvdb_client:
         return JSONResponse(
             content={"status": "unhealthy", "message": "Client not initialized"},
             status_code=503,
@@ -176,16 +130,19 @@ async def health_check():
 
     uptime = int(time.time() - startup_time) if startup_time else 0
 
+    jobs = sabnzbd_api.job_manager.jobs.values() if sabnzbd_api.job_manager else []
+    active_jobs = sum(1 for j in jobs if j.status in sabnzbd_api.ACTIVE_STATUSES)
+    failed_jobs = sum(1 for j in jobs if j.status == "failed")
+
     response = {
         "status": overall_status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": __version__,
         "uptime": uptime,
-        "orionoid_api": {
+        "tvdb_api": {
             "healthy": api_status["healthy"],
             "message": api_status["message"],
             "lastChecked": api_status["last_checked"],
-            "userInfo": api_status["user_info"],
         },
         "search": {
             "status": search_status,
@@ -194,6 +151,10 @@ async def health_check():
                 if last_successful_search
                 else None
             ),
+        },
+        "downloads": {
+            "active": active_jobs,
+            "failed": failed_jobs,
         },
     }
 
@@ -205,24 +166,16 @@ async def health_check():
 async def api_endpoint(
     t: str = Query(..., description="API function type"),
     apikey: Optional[str] = Query(None, description="API key for authentication"),
-    q: Optional[str] = Query(None, description="Search query"),
-    cat: Optional[str] = Query(None, description="Category"),
-    imdbid: Optional[str] = Query(None, description="IMDb ID"),
-    tvdbid: Optional[str] = Query(None, description="TVDB ID"),
-    tmdbid: Optional[str] = Query(None, description="TMDB ID"),
+    q: Optional[str] = Query(None, description="Series title (used for release naming only)"),
+    tvdbid: Optional[int] = Query(None, description="TheTVDB series ID"),
     season: Optional[int] = Query(None, description="Season number"),
     ep: Optional[int] = Query(None, description="Episode number"),
-    limit: Optional[int] = Query(100, description="Result limit"),
-    offset: Optional[int] = Query(0, description="Result offset"),
-    extended: Optional[int] = Query(None, description="Extended attributes")
 ):
     """Main API endpoint for Torznab/Newznab protocol"""
 
-    # Log incoming request parameters for debugging
     logger.info(
-        "API request: t=%s, q=%s, cat=%s, imdbid=%s, tvdbid=%s, "
-        "tmdbid=%s, season=%s, ep=%s, limit=%s",
-        t, q, cat, imdbid, tvdbid, tmdbid, season, ep, limit,
+        "API request: t=%s, q=%s, tvdbid=%s, season=%s, ep=%s",
+        t, q, tvdbid, season, ep,
     )
 
     try:
@@ -237,108 +190,11 @@ async def api_endpoint(
         check_api_key(apikey)
 
         # Ensure we have a client
-        if not orion_client:
-            raise HTTPException(status_code=503, detail="Orionoid client not initialized")
+        if not tvdb_client:
+            raise HTTPException(status_code=503, detail="TVDB client not initialized")
 
-        # Limit max results
-        limit = min(limit or settings.default_search_limit, settings.max_search_limit)
-
-        # Handle different search types
-        if t == "search":
-            # General search - determine media type from categories
-            if cat:
-                # Check if categories are TV categories (5xxx)
-                categories = [int(c) for c in cat.split(",") if c.isdigit()]
-                if any(c >= 5000 and c < 6000 for c in categories):
-                    media_type = "show"
-                else:
-                    media_type = "movie"
-
-                results = await search_orionoid(
-                    query=q,
-                    imdb_id=imdbid,
-                    media_type=media_type,
-                    limit=limit
-                )
-            else:
-                # No category specified - search both movies and TV shows
-                logger.info("No category specified - searching both movies and TV shows")
-
-                # Search movies and TV in parallel
-                movie_results, tv_results = await asyncio.gather(
-                    search_orionoid(
-                        query=q,
-                        imdb_id=imdbid,
-                        media_type="movie",
-                        limit=limit // 2,
-                    ),
-                    search_orionoid(
-                        query=q,
-                        imdb_id=imdbid,
-                        media_type="show",
-                        limit=limit // 2,
-                    ),
-                    return_exceptions=True,
-                )
-                if isinstance(movie_results, BaseException):
-                    logger.warning(f"Movie search failed: {movie_results}")
-                    movie_results = None
-                if isinstance(tv_results, BaseException):
-                    logger.warning(f"TV search failed: {tv_results}")
-                    tv_results = None
-
-                # Combine results
-                results = {
-                    "result": {"status": "success"},
-                    "data": {
-                        "streams": [],
-                        "count": 0
-                    }
-                }
-
-                # Add movie streams (mark them as movies)
-                if movie_results and movie_results.get("result", {}).get("status") == "success":
-                    movie_streams = movie_results.get("data", {}).get("streams", [])
-                    for stream in movie_streams:
-                        stream["_media_type"] = "movie"
-                    results["data"]["streams"].extend(movie_streams)
-
-                # Add TV streams (mark them as shows)
-                if tv_results and tv_results.get("result", {}).get("status") == "success":
-                    tv_streams = tv_results.get("data", {}).get("streams", [])
-                    for stream in tv_streams:
-                        stream["_media_type"] = "show"
-                    results["data"]["streams"].extend(tv_streams)
-
-                # If both searches failed, return an error
-                if movie_results is None and tv_results is None:
-                    raise Exception("Both movie and TV searches failed")
-
-                results["data"]["count"] = len(results["data"]["streams"])
-
-        elif t == "tvsearch":
-            # TV search
-            results = await search_orionoid(
-                query=q,
-                imdb_id=imdbid,
-                tvdb_id=tvdbid,
-                tmdb_id=tmdbid,
-                media_type="show",
-                season=season,
-                episode=ep,
-                limit=limit
-            )
-
-        elif t == "movie":
-            # Movie search
-            results = await search_orionoid(
-                query=q,
-                imdb_id=imdbid,
-                tmdb_id=tmdbid,
-                media_type="movie",
-                limit=limit
-            )
-
+        if t in ("search", "tvsearch"):
+            items = await search_dropout(tvdbid=tvdbid, season=season, episode=ep, query=q)
         else:
             return Response(
                 content=TorznabBuilder.build_error(
@@ -347,9 +203,8 @@ async def api_endpoint(
                 media_type="application/xml"
             )
 
-        # Build and return XML response
         return Response(
-            content=TorznabBuilder.build_search_results(results, t),
+            content=TorznabBuilder.build_search_results(items, t),
             media_type="application/xml"
         )
 
@@ -363,88 +218,75 @@ async def api_endpoint(
         )
 
 
-async def search_orionoid(
-    query: Optional[str] = None,
-    imdb_id: Optional[str] = None,
-    tvdb_id: Optional[str] = None,
-    tmdb_id: Optional[str] = None,
-    media_type: str = "movie",
-    season: Optional[int] = None,
-    episode: Optional[int] = None,
-    limit: int = 100
-) -> dict:
-    """Search Orionoid and return results"""
+async def search_dropout(
+    tvdbid: Optional[int],
+    season: Optional[int],
+    episode: Optional[int],
+    query: Optional[str],
+) -> List[ReleaseItem]:
+    """Resolve a Sonarr search into a list of dropout.tv releases via TVDB.
+
+    Each release's link encodes tvdbid/season/episode -- it's never fetched
+    directly, only parsed back out by sabnzbd_api's addurl handler once
+    Sonarr grabs the release.
+    """
     global last_successful_search
 
-    # Empty search = Prowlarr connection test.  Return a synthetic
-    # result so Prowlarr sees ≥1 item and marks the indexer as
-    # available, without making any Orionoid API calls.
-    if not any([query, imdb_id, tvdb_id, tmdb_id]):
+    # Empty search = Prowlarr/Sonarr connection test. Return a synthetic
+    # result so the "Test" button passes without calling the TVDB API.
+    if not any([tvdbid, query]):
         logger.info("Empty search (connection test) - returning synthetic result")
-        return {
-            "result": {"status": "success"},
-            "data": {
-                "streams": [
-                    {
-                        "id": "connection-test",
-                        "file": {"name": "Connection Test", "size": 0},
-                        "video": {"quality": "1080"},
-                        "audio": {},
-                        "meta": {},
-                        "links": ["magnet:?xt=urn:btih:" + "0" * 40],
-                        "stream": {"type": "torrent", "seeds": 1},
-                        "time": {"added": int(time.time())},
-                    }
-                ],
-            },
-        }
+        return [
+            ReleaseItem(
+                title="Connection Test",
+                guid="connection-test",
+                link=f"{settings.public_url}/sabnzbd/nzb/0/1/1",
+                season=1,
+                episode=1,
+            )
+        ]
 
-    # Clean up IDs (remove 'tt' prefix from IMDb IDs if present)
-    if imdb_id and imdb_id.startswith("tt"):
-        imdb_id = imdb_id[2:]
+    if not tvdbid:
+        logger.info("Search without tvdbid - nothing to resolve")
+        return []
 
-    # Perform search
-    logger.info(
-        "Searching Orionoid: query=%s, imdb=%s, tvdb=%s, tmdb=%s, "
-        "type=%s, season=%s, episode=%s",
-        query, imdb_id, tvdb_id, tmdb_id, media_type, season, episode,
-    )
+    if season is None:
+        logger.info("tvsearch without season - dropout.tv releases are per-episode only")
+        return []
+
+    series_title = query or f"tvdb-{tvdbid}"
 
     try:
-        results = await orion_client.search_streams(
-            query=query,
-            imdb_id=imdb_id,
-            tvdb_id=tvdb_id,
-            tmdb_id=tmdb_id,
-            media_type=media_type,
-            season=season,
-            episode=episode,
-            limit=limit,
+        episode_numbers = [episode] if episode is not None else (
+            await tvdb_client.get_season_episode_numbers(tvdbid, season)
         )
+
+        items: List[ReleaseItem] = []
+        for ep_number in episode_numbers:
+            source = await tvdb_client.resolve_episode(tvdbid, season, ep_number)
+            if not source:
+                continue
+
+            title = f"{series_title} S{season:02d}E{ep_number:02d} {source['name']}".strip()
+            link = f"{settings.public_url}/sabnzbd/nzb/{tvdbid}/{season}/{ep_number}"
+            items.append(
+                ReleaseItem(
+                    title=title,
+                    guid=f"dropout-{tvdbid}-{season}-{ep_number}",
+                    link=link,
+                    season=season,
+                    episode=ep_number,
+                )
+            )
     except Exception as e:
         _update_api_status(healthy=False, message=str(e))
         raise
 
-    # Check for errors -- but "not found" is just empty results, not a failure
-    result_status = results.get("result", {}).get("status")
-    if result_status != "success":
-        error_msg = results.get("result", {}).get("message", "Unknown error")
-        if "not be found" in error_msg or "do not exist" in error_msg:
-            logger.info("No streams found (not an error): %s", error_msg)
-            results = {"result": {"status": "success"}, "data": {"streams": []}}
-        else:
-            _update_api_status(healthy=False, message=error_msg)
-            raise Exception(f"Orionoid API error: {error_msg}")
-
-    # Log results
-    streams_count = len(results.get("data", {}).get("streams", []))
-    logger.info("Orionoid returned %d streams", streams_count)
-
-    # Update status on success
+    logger.info("Resolved %d dropout.tv release(s)", len(items))
     last_successful_search = datetime.now(timezone.utc)
     _update_api_status(healthy=True, message="Last search succeeded")
 
-    return results
+    return items
 
 
 # Additional Prowlarr-specific endpoints
@@ -454,21 +296,12 @@ async def api_endpoint_with_id(
     t: str = Query(...),
     apikey: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
-    cat: Optional[str] = Query(None),
-    imdbid: Optional[str] = Query(None),
-    tvdbid: Optional[str] = Query(None),
-    tmdbid: Optional[str] = Query(None),
+    tvdbid: Optional[int] = Query(None),
     season: Optional[int] = Query(None),
     ep: Optional[int] = Query(None),
-    limit: Optional[int] = Query(100),
-    offset: Optional[int] = Query(0),
-    extended: Optional[int] = Query(None)
 ):
     """Alternative API endpoint with indexer ID in path (Prowlarr compatibility)"""
-    return await api_endpoint(
-        t, apikey, q, cat, imdbid, tvdbid, tmdbid,
-        season, ep, limit, offset, extended,
-    )
+    return await api_endpoint(t, apikey, q, tvdbid, season, ep)
 
 
 if __name__ == "__main__":

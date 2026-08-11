@@ -1,40 +1,41 @@
 from typing import Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Orionoid API credentials
-    # App key is hardcoded as per Orionoid documentation
-    # This is the official Prowlarr-Orionoid app key
-    orionoid_app_api_key: str = "WYC8JEBTCABDCB6SDNNGMJHP8AVSBEHV"
-    orionoid_user_api_key: str
+    # TheTVDB v4 API credentials
+    tvdb_api_key: str
+    tvdb_pin: Optional[str] = None
 
     # Service configuration
     service_port: int = 8080
     service_host: str = "0.0.0.0"
 
+    # Base URL this service is reachable at, used to build absolute Torznab
+    # links (never dereferenced externally -- parsed back out by our own
+    # SABnzbd-emulation addurl handler)
+    public_url: str = "http://localhost:8080"
+
+    # yt-dlp download configuration
+    netrc_path: str = "/config/.netrc"
+    downloads_dir: str = "/downloads"
+
     # Torznab/Newznab configuration
-    indexer_name: str = "Orionoid"
-    indexer_description: str = "Orionoid Torznab Indexer"
+    indexer_name: str = "Dropout"
+    indexer_description: str = "dropout.tv Torznab Indexer"
 
-    # API key for Prowlarr authentication (optional)
-    # If set, Prowlarr must provide this key as 'apikey' parameter
+    # API key for Prowlarr/Sonarr authentication (optional)
+    # If set, callers must provide this key as 'apikey' parameter
     prowlarr_api_key: Optional[str] = None
-
-    # Default search limits
-    default_search_limit: int = 100
-    max_search_limit: int = 1000
 
     # Logging
     log_level: str = "INFO"
 
-    # Cache settings (in seconds)
+    # Cache settings (in seconds) -- used for TVDB episode lookup caching
     cache_ttl: int = 300  # 5 minutes
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
 settings = Settings()
