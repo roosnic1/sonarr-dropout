@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-import main as main_module
-import sabnzbd_api
+import sonarr_dropout.main as main_module
+import sonarr_dropout.sabnzbd_api as sabnzbd_api
 
 # A representative TVDBClient.resolve_episode() result, shaped like the
 # real /episodes/{id}/extended response's remoteIds-derived output.

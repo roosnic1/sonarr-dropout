@@ -169,7 +169,7 @@ docker run -d \
 
 5. Run the service:
    ```bash
-   python main.py
+   python -m sonarr_dropout.main
    ```
 
 ## Troubleshooting
@@ -201,13 +201,14 @@ docker run -d \
 ### Project Structure
 ```
 sonarr-dropout/
-├── main.py                # FastAPI application (Torznab endpoints)
-├── tvdb_client.py          # TheTVDB v4 API client
-├── dropout_downloader.py   # yt-dlp download wrapper
-├── sabnzbd_api.py           # Fake SABnzbd download client API
-├── torznab_builder.py      # Torznab XML response builder
-├── config.py               # Configuration management
-├── __version__.py          # Version information
+├── sonarr_dropout/
+│   ├── main.py                # FastAPI application (Torznab endpoints)
+│   ├── tvdb_client.py          # TheTVDB v4 API client
+│   ├── dropout_downloader.py   # yt-dlp download wrapper
+│   ├── sabnzbd_api.py           # Fake SABnzbd download client API
+│   ├── torznab_builder.py      # Torznab XML response builder
+│   ├── config.py               # Configuration management
+│   └── __version__.py          # Version information
 ├── pyproject.toml          # Project configuration and dependencies
 ├── Dockerfile               # Docker container definition
 ├── docker-compose.yml       # Docker Compose configuration

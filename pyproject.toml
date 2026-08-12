@@ -30,18 +30,10 @@ dev = [
 ]
 
 [tool.setuptools.dynamic]
-version = {attr = "__version__.__version__"}
+version = {attr = "sonarr_dropout.__version__.__version__"}
 
 [tool.setuptools]
-py-modules = [
-    "__version__",
-    "config",
-    "main",
-    "tvdb_client",
-    "dropout_downloader",
-    "sabnzbd_api",
-    "torznab_builder",
-]
+packages = ["sonarr_dropout"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

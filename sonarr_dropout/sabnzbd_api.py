@@ -13,9 +13,9 @@ from fastapi.responses import JSONResponse, Response
 from lxml import etree
 from starlette.datastructures import UploadFile
 
-import dropout_downloader
-from config import settings
-from tvdb_client import TVDBClient
+from . import dropout_downloader
+from .config import settings
+from .tvdb_client import TVDBClient
 
 logger = logging.getLogger(__name__)
 

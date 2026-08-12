@@ -22,7 +22,7 @@ pytest tests/test_api.py -q   # run a single test file
 pytest tests/test_api.py::TestSearch -q          # run a single class
 pytest tests/test_api.py::TestSearch::test_x -q  # run a single test
 
-python main.py                # run the service locally (needs TVDB_API_KEY, e.g. via .env)
+python -m sonarr_dropout.main # run the service locally (needs TVDB_API_KEY, e.g. via .env)
 docker build -t sonarr-dropout .
 docker-compose up -d
 ```
@@ -30,6 +30,8 @@ docker-compose up -d
 CI (`.github/workflows/ci.yml`) requires `TVDB_API_KEY` to be set (a dummy value is fine) since `config.Settings` fails to construct without it — same requirement applies when running tests locally without a `.env` file.
 
 ## Architecture
+
+All application code lives in the `sonarr_dropout/` package (a flat package layout, not `src/`-nested); paths below are relative to that directory.
 
 - **`config.py`** — `pydantic-settings` `Settings`, loaded once at import time as the module-level `settings` singleton, sourced from env vars / `.env`. `tvdb_api_key` is required (no default); everything else has a default.
 - **`tvdb_client.py`** — `TVDBClient`, an async wrapper around the official (synchronous, `urllib`-based) `tvdb_v4_official` package. Because that underlying client keeps pagination "links" as shared per-instance state, every call is run via `asyncio.to_thread` and serialized behind an `asyncio.Lock` — don't call it concurrently without going through this wrapper. `resolve_episode(series_id, season, episode)` is the main entry point: it finds the TVDB episode id for a season/episode number (paginating `get_series_episodes`), then reads that episode's `remoteIds` (via `get_episode_extended`) for the `watch.dropout.tv` URL. Results are cached in-memory per `settings.cache_ttl` since Sonarr's RSS sync re-queries the same episodes repeatedly.

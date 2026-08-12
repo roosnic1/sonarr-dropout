@@ -8,11 +8,11 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-import sabnzbd_api
-from __version__ import __version__
-from config import settings
-from torznab_builder import ReleaseItem, TorznabBuilder
-from tvdb_client import TVDBClient
+from . import sabnzbd_api
+from .__version__ import __version__
+from .config import settings
+from .torznab_builder import ReleaseItem, TorznabBuilder
+from .tvdb_client import TVDBClient
 
 # Configure logging
 logging.basicConfig(
@@ -316,7 +316,7 @@ async def api_endpoint_with_id(
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
+        "sonarr_dropout.main:app",
         host=settings.service_host,
         port=settings.service_port,
         reload=False

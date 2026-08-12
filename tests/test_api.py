@@ -2,7 +2,7 @@
 
 from lxml import etree
 
-import main as main_module
+import sonarr_dropout.main as main_module
 
 NEWZNAB_NS = "http://www.newznab.com/DTD/2010/feeds/attributes/"
 

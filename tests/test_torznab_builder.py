@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from lxml import etree
 
-from torznab_builder import ReleaseItem, TorznabBuilder
+from sonarr_dropout.torznab_builder import ReleaseItem, TorznabBuilder
 
 NEWZNAB_NS = "http://www.newznab.com/DTD/2010/feeds/attributes/"
 

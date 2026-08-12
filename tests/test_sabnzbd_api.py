@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-import sabnzbd_api
+import sonarr_dropout.sabnzbd_api as sabnzbd_api
 
 NZB_LINK = "http://localhost:8080/sabnzbd/nzb/369988/8/2"
 
@@ -132,7 +132,10 @@ class TestJobLifecycle:
     async def test_completed_job_appears_in_history_not_queue(
         self, test_client, mock_search, reset_globals
     ):
-        with patch("dropout_downloader.download", AsyncMock(return_value="/downloads/job")):
+        with patch(
+            "sonarr_dropout.dropout_downloader.download",
+            AsyncMock(return_value="/downloads/job"),
+        ):
             resp = await test_client.get(
                 "/sabnzbd/api", params={"mode": "addurl", "name": NZB_LINK, "cat": "tv"}
             )
@@ -152,7 +155,7 @@ class TestJobLifecycle:
         self, test_client, mock_search, reset_globals
     ):
         with patch(
-            "dropout_downloader.download",
+            "sonarr_dropout.dropout_downloader.download",
             AsyncMock(side_effect=sabnzbd_api.dropout_downloader.DownloadError("boom")),
         ):
             resp = await test_client.get(
