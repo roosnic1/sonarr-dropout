@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-08-12
+
+### Changed
+- Reorganized all application modules (`main.py`, `config.py`, `tvdb_client.py`, `dropout_downloader.py`, `sabnzbd_api.py`, `torznab_builder.py`, `__version__.py`) from the repo root into a `sonarr_dropout/` package, replacing setuptools' `py-modules` list with `packages`. The service now runs via `python -m sonarr_dropout.main` instead of `python main.py`
+
 ## [0.1.3] - 2026-08-11
 
 ### Fixed
@@ -54,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TVDB_API_KEY` (required) and optional `TVDB_PIN` for TheTVDB v4 API access
 - `PUBLIC_URL`, `NETRC_PATH`, `DOWNLOADS_DIR`, `SERVICE_PORT`/`SERVICE_HOST`, `PROWLARR_API_KEY`, `LOG_LEVEL`, `CACHE_TTL` via environment variables / `.env`
 
+[0.1.4]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.4
 [0.1.3]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.3
 [0.1.2]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.2
 [0.1.1]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.1
