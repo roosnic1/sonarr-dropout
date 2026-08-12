@@ -29,6 +29,17 @@ class TestParseNzbLink:
             sabnzbd_api.parse_nzb_link("not-a-valid-link")
 
 
+class TestFormatTimeleft:
+    def test_formats_as_h_mm_ss(self):
+        assert sabnzbd_api._format_timeleft(40) == "0:00:40"
+
+    def test_past_24_hours_has_no_day_prefix(self):
+        # Sonarr's SabnzbdQueueTimeConverter Int32.Parse's each ':'-split
+        # part expecting plain H:MM:SS -- str(timedelta(...)) would prefix
+        # "1 day, " here and break that parse.
+        assert sabnzbd_api._format_timeleft(90000) == "25:00:00"
+
+
 class TestVersionAndCats:
     async def test_version(self, test_client, reset_globals):
         resp = await test_client.get("/sabnzbd/api", params={"mode": "version"})

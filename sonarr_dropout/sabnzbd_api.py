@@ -4,7 +4,6 @@ import shutil
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import timedelta
 from pathlib import Path
 from typing import Dict, Optional
 from urllib.parse import urlparse
@@ -289,6 +288,15 @@ def _build_queue(params: Dict[str, str]) -> dict:
     }
 
 
+def _format_timeleft(eta_seconds: int) -> str:
+    """Sonarr's SabnzbdQueueTimeConverter parses this as plain H:MM:SS and
+    Int32.Parse's each part -- str(timedelta(...)) instead prefixes
+    "X day(s), " once eta_seconds reaches 24h, which breaks that parse."""
+    hours, remainder = divmod(max(eta_seconds, 0), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}:{minutes:02d}:{seconds:02d}"
+
+
 def _queue_slot(job: Job) -> dict:
     mb = job.total_bytes / (1024**2)
     mb_done = job.downloaded_bytes / (1024**2)
@@ -301,7 +309,7 @@ def _queue_slot(job: Job) -> dict:
         "mbleft": f"{max(mb - mb_done, 0):.2f}",
         "percentage": f"{percentage:.0f}",
         "status": "Queued" if job.status == "queued" else "Downloading",
-        "timeleft": str(timedelta(seconds=job.eta_seconds)),
+        "timeleft": _format_timeleft(job.eta_seconds),
         "priority": "Normal",
     }
 
