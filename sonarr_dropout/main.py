@@ -8,7 +8,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from . import sabnzbd_api
+from . import dropout_downloader, sabnzbd_api
 from .__version__ import __version__
 from .config import settings
 from .torznab_builder import ReleaseItem, TorznabBuilder
@@ -255,9 +255,12 @@ async def search_dropout(
         logger.info("tvsearch without season - dropout.tv releases are per-episode only")
         return []
 
-    series_title = query or f"tvdb-{tvdbid}"
-
     try:
+        # Sonarr's normal tvdbid-only search omits `q` -- look the series
+        # name up on TVDB rather than falling straight back to a garbage
+        # title. Still falls back if the lookup itself comes back empty.
+        series_title = await tvdb_client.get_series_name(tvdbid) or f"tvdb-{tvdbid}"
+
         episode_numbers = [episode] if episode is not None else (
             await tvdb_client.get_season_episode_numbers(tvdbid, season)
         )
@@ -268,6 +271,12 @@ async def search_dropout(
             if not source:
                 continue
 
+            # Best-effort estimate (dropout.tv's HLS manifest carries a
+            # bitrate, not a byte count) so Sonarr's size column isn't blank
+            # before grab. Falls back to 0 ("unknown") if yt-dlp can't
+            # approximate it -- never blocks the release from appearing.
+            size = await dropout_downloader.estimate_filesize(source["url"], settings.netrc_path)
+
             # "1080p WEB-DL English" isn't describing a real encode -- it's
             # there so Sonarr's title parser (which drives its Quality/
             # Language columns and interactive-search tooltip, independent of
@@ -275,7 +284,7 @@ async def search_dropout(
             # consistently HD and English-only, so the claim is accurate.
             title = (
                 f"{series_title} S{season:02d}E{ep_number:02d} "
-                f"{source['name']} 1080p WEB-DL English"
+                f"{source['name']} 1080p DRPO WEB-DL H264 AAC English"
             ).strip()
             link = f"{settings.public_url}/sabnzbd/nzb/{tvdbid}/{season}/{ep_number}"
             items.append(
@@ -286,6 +295,7 @@ async def search_dropout(
                     season=season,
                     episode=ep_number,
                     tvdbid=tvdbid,
+                    size=size or 0,
                 )
             )
     except Exception as e:
