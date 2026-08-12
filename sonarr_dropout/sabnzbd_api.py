@@ -4,6 +4,7 @@ import shutil
 import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Dict, Optional
 from urllib.parse import urlparse
@@ -40,6 +41,24 @@ class Job:
     added_at: float = field(default_factory=time.time)
     storage: Optional[str] = None
     fail_message: str = ""
+    downloaded_bytes: int = 0
+    total_bytes: int = 0
+    speed_bps: float = 0.0
+    eta_seconds: int = 0
+
+
+def _update_progress(job: Job, progress: dict) -> None:
+    """yt-dlp progress_hooks callback, invoked from the download's worker
+    thread (see dropout_downloader.download) once per download tick. Writes
+    straight onto the Job's plain attributes -- fine without locking since
+    these are simple int/float assignments read back only for status
+    reporting, where staleness/torn reads don't matter."""
+    if progress.get("status") != "downloading":
+        return
+    job.downloaded_bytes = progress.get("downloaded_bytes") or 0
+    job.total_bytes = progress.get("total_bytes") or progress.get("total_bytes_estimate") or 0
+    job.speed_bps = progress.get("speed") or 0.0
+    job.eta_seconds = progress.get("eta") or 0
 
 
 class JobManager:
@@ -80,7 +99,10 @@ class JobManager:
                     f"S{job.season}E{job.episode}"
                 )
             dest_dir = self.downloads_dir / job.nzo_id
-            await dropout_downloader.download(source["url"], dest_dir, self.netrc_path)
+            await dropout_downloader.download(
+                source["url"], dest_dir, self.netrc_path,
+                progress_callback=lambda d: _update_progress(job, d),
+            )
             job.storage = str(dest_dir)
             job.status = "completed"
             logger.info("Job %s completed: %s", job.nzo_id, dest_dir)
@@ -251,31 +273,36 @@ def _build_queue(params: Dict[str, str]) -> dict:
         job_manager.delete(params.get("value", ""))
         return {"status": True}
 
-    slots = [
-        {
-            "nzo_id": job.nzo_id,
-            "filename": job.title,
-            "cat": job.category,
-            "mb": "0",
-            "mbleft": "0",
-            "percentage": "0" if job.status == "queued" else "50",
-            "status": "Queued" if job.status == "queued" else "Downloading",
-            "timeleft": "0:00:00",
-            "priority": "Normal",
-        }
-        for job in job_manager.jobs.values()
-        if job.status in ACTIVE_STATUSES
-    ]
+    active = [job for job in job_manager.jobs.values() if job.status in ACTIVE_STATUSES]
+    slots = [_queue_slot(job) for job in active]
+    total_kbpersec = sum(job.speed_bps for job in active if job.status == "downloading") / 1024
 
     return {
         "queue": {
             "status": "Downloading" if slots else "Idle",
-            "speed": "0",
-            "kbpersec": "0",
+            "speed": f"{total_kbpersec:.1f} K",
+            "kbpersec": f"{total_kbpersec:.1f}",
             "noofslots_total": len(slots),
             "noofslots": len(slots),
             "slots": slots,
         }
+    }
+
+
+def _queue_slot(job: Job) -> dict:
+    mb = job.total_bytes / (1024**2)
+    mb_done = job.downloaded_bytes / (1024**2)
+    percentage = (job.downloaded_bytes / job.total_bytes * 100) if job.total_bytes else 0
+    return {
+        "nzo_id": job.nzo_id,
+        "filename": job.title,
+        "cat": job.category,
+        "mb": f"{mb:.2f}",
+        "mbleft": f"{max(mb - mb_done, 0):.2f}",
+        "percentage": f"{percentage:.0f}",
+        "status": "Queued" if job.status == "queued" else "Downloading",
+        "timeleft": str(timedelta(seconds=job.eta_seconds)),
+        "priority": "Normal",
     }
 
 

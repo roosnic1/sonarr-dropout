@@ -182,6 +182,75 @@ class TestJobLifecycle:
         assert await _wait_for_terminal_status(job) == "failed"
 
 
+class TestProgressReporting:
+    def test_update_progress_sets_fields_from_downloading_event(self):
+        job = sabnzbd_api.Job(nzo_id="x", title="t", tvdbid=1, season=1, episode=1)
+        sabnzbd_api._update_progress(
+            job,
+            {
+                "status": "downloading",
+                "downloaded_bytes": 512,
+                "total_bytes": 2048,
+                "speed": 1024.0,
+                "eta": 30,
+            },
+        )
+        assert job.downloaded_bytes == 512
+        assert job.total_bytes == 2048
+        assert job.speed_bps == 1024.0
+        assert job.eta_seconds == 30
+
+    def test_update_progress_ignores_non_downloading_status(self):
+        job = sabnzbd_api.Job(
+            nzo_id="x", title="t", tvdbid=1, season=1, episode=1,
+            downloaded_bytes=512, total_bytes=2048,
+        )
+        sabnzbd_api._update_progress(job, {"status": "finished"})
+        assert job.downloaded_bytes == 512
+        assert job.total_bytes == 2048
+
+    async def test_queue_reports_progress_from_download_hook(
+        self, test_client, mock_search, reset_globals
+    ):
+        resume = asyncio.Event()
+
+        async def fake_download(url, dest_dir, netrc_path, progress_callback=None):
+            progress_callback(
+                {
+                    "status": "downloading",
+                    "downloaded_bytes": 25 * 1024 * 1024,
+                    "total_bytes": 100 * 1024 * 1024,
+                    "speed": 2 * 1024 * 1024,
+                    "eta": 40,
+                }
+            )
+            await resume.wait()  # hold the job in "downloading" until assertions run
+            return dest_dir
+
+        with patch("sonarr_dropout.dropout_downloader.download", fake_download):
+            resp = await test_client.get(
+                "/sabnzbd/api", params={"mode": "addurl", "name": NZB_LINK, "cat": "tv"}
+            )
+            nzo_id = resp.json()["nzo_ids"][0]
+            job = sabnzbd_api.job_manager.jobs[nzo_id]
+
+            elapsed = 0.0
+            while job.total_bytes == 0 and elapsed < 1.0:
+                await asyncio.sleep(0.01)
+                elapsed += 0.01
+
+            queue = (await test_client.get("/sabnzbd/api", params={"mode": "queue"})).json()
+            slot = next(s for s in queue["queue"]["slots"] if s["nzo_id"] == nzo_id)
+            assert slot["mb"] == "100.00"
+            assert slot["mbleft"] == "75.00"
+            assert slot["percentage"] == "25"
+            assert slot["timeleft"] == "0:00:40"
+            assert queue["queue"]["kbpersec"] == "2048.0"
+
+            resume.set()
+            await _wait_for_terminal_status(job)
+
+
 class TestDeleteJob:
     async def test_delete_from_queue(self, test_client, reset_globals):
         sabnzbd_api.job_manager.jobs["x"] = sabnzbd_api.Job(
