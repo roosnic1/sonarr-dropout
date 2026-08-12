@@ -48,6 +48,7 @@ class TVDBClient:
         self._lock = asyncio.Lock()
         self._episode_id_cache = _TTLCache(cache_ttl)
         self._source_url_cache = _TTLCache(cache_ttl)
+        self._series_name_cache = _TTLCache(cache_ttl)
 
     async def __aenter__(self):
         return self
@@ -152,6 +153,27 @@ class TVDBClient:
         result = {"url": dropout_url, "name": data.get("name") or ""}
         self._source_url_cache.set(episode_id, result)
         return result
+
+    async def get_series_name(self, series_id: int) -> Optional[str]:
+        """Return the series' primary name, for release titles when Sonarr's
+        search omits `q` (its normal tvdbid-only search path)."""
+        cached = self._series_name_cache.get(series_id)
+        if cached is not None:
+            return cached
+
+        async with self._lock:
+            client = self._client or await self._connect()
+            try:
+                data = await asyncio.to_thread(client.get_series, series_id)
+            except Exception as e:
+                logger.info("TVDB request failed (%s), re-authenticating and retrying", e)
+                client = await self._connect()
+                data = await asyncio.to_thread(client.get_series, series_id)
+
+        name = data.get("name")
+        if name:
+            self._series_name_cache.set(series_id, name)
+        return name
 
     async def resolve_episode(
         self, series_id: int, season: int, episode: int

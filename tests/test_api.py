@@ -80,6 +80,28 @@ class TestSearch:
         item = _parse_xml(resp.text).findall(".//item")[0]
         assert item.find("size").text == "0"
 
+    async def test_title_resolves_series_name_from_tvdb_when_q_omitted(
+        self, test_client, mock_search, reset_globals
+    ):
+        """Sonarr's normal tvdbid-only search omits `q` -- the title should
+        carry the real series name from TVDB, not the `tvdb-{id}` filler."""
+        resp = await test_client.get(
+            "/api", params={"t": "tvsearch", "tvdbid": 369988, "season": 8, "ep": 2}
+        )
+        mock_search.get_series_name.assert_called_once_with(369988)
+        item = _parse_xml(resp.text).findall(".//item")[0]
+        assert item.find("title").text.startswith("Game Changer S08E02")
+
+    async def test_title_falls_back_to_tvdbid_when_series_name_unresolvable(
+        self, test_client, mock_search, reset_globals
+    ):
+        mock_search.get_series_name.return_value = None
+        resp = await test_client.get(
+            "/api", params={"t": "tvsearch", "tvdbid": 369988, "season": 8, "ep": 2}
+        )
+        item = _parse_xml(resp.text).findall(".//item")[0]
+        assert item.find("title").text.startswith("tvdb-369988 S08E02")
+
     async def test_season_pack_resolves_every_episode(
         self, test_client, mock_search, reset_globals
     ):

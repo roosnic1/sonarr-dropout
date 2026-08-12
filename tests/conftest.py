@@ -79,4 +79,5 @@ def mock_search(test_client):
     """
     main_module.tvdb_client.resolve_episode.return_value = dict(SAMPLE_RESOLVED_EPISODE)
     main_module.tvdb_client.get_season_episode_numbers.return_value = [1, 2]
+    main_module.tvdb_client.get_series_name.return_value = "Game Changer"
     return main_module.tvdb_client

@@ -255,9 +255,12 @@ async def search_dropout(
         logger.info("tvsearch without season - dropout.tv releases are per-episode only")
         return []
 
-    series_title = query or f"tvdb-{tvdbid}"
-
     try:
+        # Sonarr's normal tvdbid-only search omits `q` -- look the series
+        # name up on TVDB rather than falling straight back to a garbage
+        # title. Still falls back if the lookup itself comes back empty.
+        series_title = await tvdb_client.get_series_name(tvdbid) or f"tvdb-{tvdbid}"
+
         episode_numbers = [episode] if episode is not None else (
             await tvdb_client.get_season_episode_numbers(tvdbid, season)
         )
@@ -281,7 +284,7 @@ async def search_dropout(
             # consistently HD and English-only, so the claim is accurate.
             title = (
                 f"{series_title} S{season:02d}E{ep_number:02d} "
-                f"{source['name']} 1080p WEB-DL English"
+                f"{source['name']} 1080p DRPO WEB-DL AAC English"
             ).strip()
             link = f"{settings.public_url}/sabnzbd/nzb/{tvdbid}/{season}/{ep_number}"
             items.append(
