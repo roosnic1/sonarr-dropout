@@ -8,7 +8,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from . import sabnzbd_api
+from . import dropout_downloader, sabnzbd_api
 from .__version__ import __version__
 from .config import settings
 from .torznab_builder import ReleaseItem, TorznabBuilder
@@ -268,6 +268,12 @@ async def search_dropout(
             if not source:
                 continue
 
+            # Best-effort estimate (dropout.tv's HLS manifest carries a
+            # bitrate, not a byte count) so Sonarr's size column isn't blank
+            # before grab. Falls back to 0 ("unknown") if yt-dlp can't
+            # approximate it -- never blocks the release from appearing.
+            size = await dropout_downloader.estimate_filesize(source["url"], settings.netrc_path)
+
             # "1080p WEB-DL English" isn't describing a real encode -- it's
             # there so Sonarr's title parser (which drives its Quality/
             # Language columns and interactive-search tooltip, independent of
@@ -286,6 +292,7 @@ async def search_dropout(
                     season=season,
                     episode=ep_number,
                     tvdbid=tvdbid,
+                    size=size or 0,
                 )
             )
     except Exception as e:

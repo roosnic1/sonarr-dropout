@@ -60,3 +60,37 @@ async def download(
         raise DownloadError(str(e)) from e
 
     return dest_dir
+
+
+async def estimate_filesize(url: str, netrc_path: str) -> Optional[int]:
+    """Best-effort byte size for `url`, without downloading it.
+
+    dropout.tv's HLS manifests declare a per-variant bitrate but no exact
+    byte count (that only exists once segments are fetched), so this reads
+    yt-dlp's `filesize_approx` -- computed from bitrate * duration -- for
+    whichever formats `download()` would actually select. Returns None if
+    yt-dlp can't determine or approximate a size for every selected format.
+    """
+    ydl_opts = {
+        "usenetrc": True,
+        "netrc_location": netrc_path,
+        "quiet": True,
+        "no_warnings": True,
+        "merge_output_format": "mkv",
+    }
+
+    def _run() -> Optional[int]:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+
+        formats = info.get("requested_formats") or [info]
+        sizes = [f.get("filesize") or f.get("filesize_approx") for f in formats]
+        if not sizes or any(size is None for size in sizes):
+            return None
+        return sum(sizes)
+
+    try:
+        return await asyncio.to_thread(_run)
+    except yt_dlp.utils.DownloadError as e:
+        logger.warning("yt-dlp failed to estimate filesize for %s: %s", url, e)
+        return None
