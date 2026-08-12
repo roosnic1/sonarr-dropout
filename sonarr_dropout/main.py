@@ -284,7 +284,7 @@ async def search_dropout(
             # consistently HD and English-only, so the claim is accurate.
             title = (
                 f"{series_title} S{season:02d}E{ep_number:02d} "
-                f"{source['name']} 1080p DRPO WEB-DL AAC English"
+                f"{source['name']} 1080p DRPO WEB-DL H264 AAC English"
             ).strip()
             link = f"{settings.public_url}/sabnzbd/nzb/{tvdbid}/{season}/{ep_number}"
             items.append(
