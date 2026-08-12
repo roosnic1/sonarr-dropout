@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-08-12
+
+### Added
+- Real-time download progress: yt-dlp's progress hooks (bytes downloaded, total bytes, speed, ETA) are now wired through to the SABnzbd `queue` API, so Sonarr's Activity tab shows real progress/speed/time-left instead of hardcoded placeholder values
+- Best-effort file size estimation on search results -- dropout.tv's HLS manifests carry a per-variant bitrate but no byte count, and yt-dlp deliberately leaves `filesize`/`filesize_approx` unset for such formats (a fragmented format's bitrate is often peak rather than average), so releases now report the same `tbr * duration` fallback yt-dlp's own `-F` table computes at print time, summing whichever video/audio component formats can be sized, instead of leaving Sonarr's size column blank
+- CI publishes testable Docker images (`pr-<number>`, `sha-<short-sha>`) to ghcr.io for pull requests, gated behind the existing test job so failing PRs never produce one, with a sticky PR comment showing the pull command and a nightly cleanup workflow removing `pr-*` tags once their PR closes
+
+### Fixed
+- Release titles built from Sonarr's normal tvdbid-only search (which omits `q`) showed the placeholder `tvdb-<id>` instead of the real series name -- `TVDBClient.get_series_name` now resolves and caches it from TheTVDB, falling back to the placeholder only if that lookup itself comes back empty
+- Release titles described the video codec as missing instead of naming it -- corrected the literal title tokens to include `H264` alongside the existing `WEB-DL`/`English` tokens Sonarr's title parser depends on
+- Download ETAs at or past 24 hours broke Sonarr's queue polling: `str(timedelta(...))` prefixes `"X day(s), "` once `eta_seconds` reaches a day, which Sonarr's `SabnzbdQueueTimeConverter` (plain `H:MM:SS` parsed with `Int32.Parse` per part) can't handle. Replaced with a custom formatter that always emits `H:MM:SS`, also fixed to accept the float `eta` values yt-dlp actually reports rather than assuming `int`
+
 ## [0.1.4] - 2026-08-12
 
 ### Changed
@@ -59,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TVDB_API_KEY` (required) and optional `TVDB_PIN` for TheTVDB v4 API access
 - `PUBLIC_URL`, `NETRC_PATH`, `DOWNLOADS_DIR`, `SERVICE_PORT`/`SERVICE_HOST`, `PROWLARR_API_KEY`, `LOG_LEVEL`, `CACHE_TTL` via environment variables / `.env`
 
+[0.1.5]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.5
 [0.1.4]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.4
 [0.1.3]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.3
 [0.1.2]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.2
