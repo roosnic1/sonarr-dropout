@@ -39,6 +39,10 @@ class TestFormatTimeleft:
         # "1 day, " here and break that parse.
         assert sabnzbd_api._format_timeleft(90000) == "25:00:00"
 
+    def test_accepts_float_eta_from_yt_dlp(self):
+        # yt-dlp's progress_hooks "eta" is a float; ":02d" rejects floats.
+        assert sabnzbd_api._format_timeleft(40.7) == "0:00:40"
+
 
 class TestVersionAndCats:
     async def test_version(self, test_client, reset_globals):

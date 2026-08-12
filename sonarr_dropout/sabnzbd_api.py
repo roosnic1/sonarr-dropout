@@ -43,7 +43,7 @@ class Job:
     downloaded_bytes: int = 0
     total_bytes: int = 0
     speed_bps: float = 0.0
-    eta_seconds: int = 0
+    eta_seconds: float = 0.0
 
 
 def _update_progress(job: Job, progress: dict) -> None:
@@ -288,11 +288,11 @@ def _build_queue(params: Dict[str, str]) -> dict:
     }
 
 
-def _format_timeleft(eta_seconds: int) -> str:
+def _format_timeleft(eta_seconds: float) -> str:
     """Sonarr's SabnzbdQueueTimeConverter parses this as plain H:MM:SS and
     Int32.Parse's each part -- str(timedelta(...)) instead prefixes
     "X day(s), " once eta_seconds reaches 24h, which breaks that parse."""
-    hours, remainder = divmod(max(eta_seconds, 0), 3600)
+    hours, remainder = divmod(max(int(eta_seconds), 0), 3600)
     minutes, seconds = divmod(remainder, 60)
     return f"{hours}:{minutes:02d}:{seconds:02d}"
 
