@@ -6,6 +6,16 @@ name: PR Image Cleanup
 # run asks the GitHub API which PRs are still open and deletes every pr-*
 # tag whose PR number isn't in that list, so images for merged/closed PRs
 # get removed within a run or two without needing an on-close trigger.
+#
+# Uses dataaxiom/ghcr-cleanup-action rather than actions/delete-package-versions
+# because ci.yml's docker job pushes multi-platform (amd64/arm64/arm/v7) images:
+# each tag is a manifest list backed by untagged per-platform manifests, and
+# actions/delete-package-versions only matches its keep-pattern against tags —
+# it can't see that those untagged manifests are still referenced by a kept tag
+# like `latest`, tries to delete them anyway, and fails once they've inherited
+# enough downloads via `latest` to trip GitHub's >5000-download delete guard.
+# ghcr-cleanup-action understands manifest lists and only removes per-platform
+# images that are actually orphaned.
 
 on:
   schedule:
@@ -24,25 +34,19 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Build keep-pattern from open PRs
+      - name: Build exclude-list from open PRs
         id: keep
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          open_prs=$(gh pr list --repo "${{ github.repository }}" --state open --json number --jq '[.[].number] | join("|")')
-          if [ -n "$open_prs" ]; then
-            pattern="^(latest|[0-9]+(\.[0-9]+){0,2}|pr-(${open_prs}))$"
-          else
-            pattern="^(latest|[0-9]+(\.[0-9]+){0,2})$"
-          fi
-          echo "pattern=$pattern" >> "$GITHUB_OUTPUT"
+          open_prs=$(gh pr list --repo "${{ github.repository }}" --state open --json number --jq '[.[] | "pr-\(.number)"] | join(",")')
+          echo "exclude=${open_prs}" >> "$GITHUB_OUTPUT"
 
       - name: Delete pr-* tags for closed PRs
-        uses: actions/delete-package-versions@v5
+        uses: dataaxiom/ghcr-cleanup-action@v1
         with:
           owner: ${{ github.repository_owner }}
-          package-name: ${{ env.IMAGE_NAME }}
-          package-type: container
-          min-versions-to-keep: 0
-          ignore-versions: ${{ steps.keep.outputs.pattern }}
+          package: ${{ env.IMAGE_NAME }}
+          delete-tags: 'pr-*'
+          exclude-tags: ${{ steps.keep.outputs.exclude }}
