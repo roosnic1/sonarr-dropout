@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-08-31
+
+### Changed
+- Bumped `uvicorn` from 0.52.1 to 0.52.4 (patch release)
+- Bumped the `python` base image digest in `Dockerfile` (still `3.14-slim`)
+- Bumped `docker/login-action` from v3 to v4 in the CI and Docker-publish workflows
+
 ## [0.1.5] - 2026-08-12
 
 ### Added
@@ -71,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TVDB_API_KEY` (required) and optional `TVDB_PIN` for TheTVDB v4 API access
 - `PUBLIC_URL`, `NETRC_PATH`, `DOWNLOADS_DIR`, `SERVICE_PORT`/`SERVICE_HOST`, `PROWLARR_API_KEY`, `LOG_LEVEL`, `CACHE_TTL` via environment variables / `.env`
 
+[0.1.6]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.6
 [0.1.5]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.5
 [0.1.4]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.4
 [0.1.3]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.3
