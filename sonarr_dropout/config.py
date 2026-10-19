@@ -19,6 +19,11 @@ class Settings(BaseSettings):
 
     # yt-dlp download configuration
     netrc_path: str = "/config/.netrc"
+    # Optional Netscape-format cookies.txt exported from a browser session that
+    # has already picked a dropout.tv profile. dropout.tv now requires picking a
+    # profile after login, which yt-dlp's .netrc login doesn't do (yt-dlp#17823),
+    # so until upstream handles it this is the only way to authenticate.
+    cookies_path: Optional[str] = None
     downloads_dir: str = "/downloads"
 
     # Torznab/Newznab configuration

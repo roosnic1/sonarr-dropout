@@ -57,6 +57,13 @@ See [`docker-compose.yml`](./docker-compose.yml) in this repo for the full set o
      password yourpassword
    ```
    yt-dlp's dropout.tv extractor looks up credentials under the `dropout` netrc machine name specifically -- don't rename it.
+
+   > **Currently also needed: a `cookies.txt` file.** dropout.tv now asks you to pick a profile after logging in, and yt-dlp's login doesn't do that yet ([yt-dlp#17823](https://github.com/yt-dlp/yt-dlp/issues/17823)), so `.netrc` alone fails with `Unable to extract embed url`. Until that's fixed upstream:
+   > 1. Log in at [watch.dropout.tv](https://watch.dropout.tv) in your browser and pick a profile.
+   > 2. Export the cookies for `watch.dropout.tv` in Netscape `cookies.txt` format (e.g. with a "Get cookies.txt LOCALLY" browser extension).
+   > 3. Mount the file into the container and set `COOKIES_PATH` to it (e.g. `-v ./cookies.txt:/config/cookies.txt:ro` and `COOKIES_PATH=/config/cookies.txt`).
+   >
+   > Re-export the file if downloads start failing again (that means the session expired or you logged out in the browser). This service only reads the file and never writes to it, so a read-only mount works.
 4. **A downloads directory shared with Sonarr** -- both containers must mount the *same host path*, since this service reports that path back to Sonarr for import.
 
 ## Configuration
@@ -69,6 +76,7 @@ See [`docker-compose.yml`](./docker-compose.yml) in this repo for the full set o
 | `TVDB_PIN` | No | - | TVDB subscriber PIN, if your account needs one |
 | `PUBLIC_URL` | No | `http://localhost:8080` | Base URL this service is reachable at from Sonarr; baked into the release links it returns |
 | `NETRC_PATH` | No | `/config/.netrc` | Path (inside the container) to the `.netrc` file yt-dlp uses for dropout.tv auth |
+| `COOKIES_PATH` | No | - | Path (inside the container) to a browser-exported `cookies.txt` for dropout.tv -- currently needed, see [Prerequisites](#prerequisites) |
 | `DOWNLOADS_DIR` | No | `/downloads` | Path (inside the container) where finished downloads are written |
 | `SERVICE_PORT` | No | 8080 | Port to run the service on |
 | `SERVICE_HOST` | No | 0.0.0.0 | Host to bind the service to |
@@ -185,6 +193,7 @@ docker run -d \
 
 ### Downloads fail
 - Check `docker logs sonarr-dropout` for the yt-dlp error
+- `Unable to extract embed url`: yt-dlp ended up on dropout.tv's profile picker instead of the video page -- set up (or re-export) `COOKIES_PATH`, see [Prerequisites](#prerequisites)
 - Verify `.netrc` has a `machine dropout` entry with valid credentials
 - Confirm your dropout.tv subscription is active
 

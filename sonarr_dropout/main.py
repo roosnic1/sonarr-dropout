@@ -62,7 +62,9 @@ async def lifespan(app: FastAPI):
         logger.error("Failed to connect to TheTVDB: %s", e)
         _update_api_status(healthy=False, message=str(e))
 
-    sabnzbd_api.init_job_manager(tvdb_client, settings.netrc_path, settings.downloads_dir)
+    sabnzbd_api.init_job_manager(
+        tvdb_client, settings.netrc_path, settings.downloads_dir, settings.cookies_path
+    )
 
     yield
 
@@ -275,7 +277,9 @@ async def search_dropout(
             # bitrate, not a byte count) so Sonarr's size column isn't blank
             # before grab. Falls back to 0 ("unknown") if yt-dlp can't
             # approximate it -- never blocks the release from appearing.
-            size = await dropout_downloader.estimate_filesize(source["url"], settings.netrc_path)
+            size = await dropout_downloader.estimate_filesize(
+                source["url"], settings.netrc_path, settings.cookies_path
+            )
 
             # "1080p WEB-DL English" isn't describing a real encode -- it's
             # there so Sonarr's title parser (which drives its Quality/

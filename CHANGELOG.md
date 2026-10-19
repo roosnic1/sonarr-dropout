@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Optional `COOKIES_PATH` setting pointing at a browser-exported `cookies.txt`, passed to yt-dlp for both downloads and size estimates. Each yt-dlp call works on a temporary copy, so yt-dlp writing its cookie jar back never touches the original file, which means a read-only mount works and concurrent calls don't race
+
+### Fixed
+- Downloads failing with `Unable to extract embed url`: dropout.tv now requires picking a profile after login, which yt-dlp's `.netrc` login doesn't handle yet ([yt-dlp#17823](https://github.com/yt-dlp/yt-dlp/issues/17823)). Authenticating with a cookies file from a browser session that already picked a profile (`COOKIES_PATH`) works around it until upstream fixes it
+
 ## [0.1.6] - 2026-08-31
 
 ### Changed

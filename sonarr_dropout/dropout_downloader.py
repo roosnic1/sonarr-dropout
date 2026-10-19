@@ -1,7 +1,10 @@
 import asyncio
 import logging
+import shutil
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterator, Optional
 
 import yt_dlp
 from yt_dlp.utils import filesize_from_tbr
@@ -15,13 +18,38 @@ class DownloadError(Exception):
     """Raised when yt-dlp fails to download a video."""
 
 
+@contextmanager
+def _auth_opts(netrc_path: str, cookies_path: Optional[str]) -> Iterator[dict]:
+    """yt-dlp auth options: .netrc, plus `cookies_path` if given.
+
+    yt-dlp writes its cookie jar back to `cookiefile` in place when the
+    YoutubeDL instance closes, which would fail on a read-only mount (after
+    the download already succeeded) and race when a download and a size
+    estimate run concurrently. So each call gets its own throwaway copy --
+    the tradeoff is that cookies yt-dlp refreshes aren't persisted, so the
+    file has to be re-exported from the browser once its session expires.
+    """
+    # dropout.tv's yt-dlp extractor keys its netrc lookup on machine "dropout"
+    opts = {"usenetrc": True, "netrc_location": netrc_path}
+    if not cookies_path:
+        yield opts
+        return
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        cookiefile = Path(tmp_dir) / "cookies.txt"
+        shutil.copyfile(cookies_path, cookiefile)
+        yield {**opts, "cookiefile": str(cookiefile)}
+
+
 async def download(
     url: str,
     dest_dir: Path,
     netrc_path: str,
     progress_callback: Optional[ProgressCallback] = None,
+    cookies_path: Optional[str] = None,
 ) -> Path:
-    """Download `url` via yt-dlp (authenticated through .netrc) into dest_dir.
+    """Download `url` via yt-dlp (authenticated through .netrc and/or
+    `cookies_path`, see _auth_opts) into dest_dir.
 
     Returns dest_dir -- SABnzbd's "history" reports a completed-download
     folder rather than a filename, and Sonarr's importer scans that folder
@@ -34,10 +62,7 @@ async def download(
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # dropout.tv's yt-dlp extractor keys its netrc lookup on machine "dropout"
     ydl_opts = {
-        "usenetrc": True,
-        "netrc_location": netrc_path,
         "outtmpl": str(dest_dir / "%(title)s.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
@@ -51,8 +76,9 @@ async def download(
     }
 
     def _run():
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+        with _auth_opts(netrc_path, cookies_path) as auth_opts:
+            with yt_dlp.YoutubeDL({**ydl_opts, **auth_opts}) as ydl:
+                ydl.download([url])
 
     try:
         await asyncio.to_thread(_run)
@@ -63,7 +89,9 @@ async def download(
     return dest_dir
 
 
-async def estimate_filesize(url: str, netrc_path: str) -> Optional[int]:
+async def estimate_filesize(
+    url: str, netrc_path: str, cookies_path: Optional[str] = None
+) -> Optional[int]:
     """Best-effort byte size for `url`, without downloading it.
 
     dropout.tv's HLS formats all carry a `manifest_url`, and yt-dlp
@@ -76,16 +104,15 @@ async def estimate_filesize(url: str, netrc_path: str) -> Optional[int]:
     whichever formats `download()` would actually select.
     """
     ydl_opts = {
-        "usenetrc": True,
-        "netrc_location": netrc_path,
         "quiet": True,
         "no_warnings": True,
         "merge_output_format": "mkv",
     }
 
     def _run() -> Optional[int]:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+        with _auth_opts(netrc_path, cookies_path) as auth_opts:
+            with yt_dlp.YoutubeDL({**ydl_opts, **auth_opts}) as ydl:
+                info = ydl.extract_info(url, download=False)
 
         duration = info.get("duration")
         formats = info.get("requested_formats") or [info]
@@ -105,6 +132,7 @@ async def estimate_filesize(url: str, netrc_path: str) -> Optional[int]:
 
     try:
         return await asyncio.to_thread(_run)
-    except yt_dlp.utils.DownloadError as e:
+    # OSError: an unreadable/missing cookies file shouldn't break search
+    except (yt_dlp.utils.DownloadError, OSError) as e:
         logger.warning("yt-dlp failed to estimate filesize for %s: %s", url, e)
         return None

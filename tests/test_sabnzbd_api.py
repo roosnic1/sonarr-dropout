@@ -229,7 +229,9 @@ class TestProgressReporting:
     ):
         resume = asyncio.Event()
 
-        async def fake_download(url, dest_dir, netrc_path, progress_callback=None):
+        async def fake_download(
+            url, dest_dir, netrc_path, progress_callback=None, cookies_path=None
+        ):
             progress_callback(
                 {
                     "status": "downloading",
