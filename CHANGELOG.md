@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.7] - 2026-10-20
 
 ### Added
 - Optional `COOKIES_PATH` setting pointing at a browser-exported `cookies.txt`, passed to yt-dlp for both downloads and size estimates. Each yt-dlp call works on a temporary copy, so yt-dlp writing its cookie jar back never touches the original file, which means a read-only mount works and concurrent calls don't race
@@ -86,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TVDB_API_KEY` (required) and optional `TVDB_PIN` for TheTVDB v4 API access
 - `PUBLIC_URL`, `NETRC_PATH`, `DOWNLOADS_DIR`, `SERVICE_PORT`/`SERVICE_HOST`, `PROWLARR_API_KEY`, `LOG_LEVEL`, `CACHE_TTL` via environment variables / `.env`
 
+[0.1.7]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.7
 [0.1.6]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.6
 [0.1.5]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.5
 [0.1.4]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.4
