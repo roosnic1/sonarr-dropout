@@ -67,9 +67,13 @@ class JobManager:
     the module-level state already used for search status in main.py.
     """
 
-    def __init__(self, tvdb_client: TVDBClient, netrc_path: str, downloads_dir: str):
+    def __init__(
+        self, tvdb_client: TVDBClient, netrc_path: str, downloads_dir: str,
+        cookies_path: Optional[str] = None,
+    ):
         self.tvdb_client = tvdb_client
         self.netrc_path = netrc_path
+        self.cookies_path = cookies_path
         self.downloads_dir = Path(downloads_dir)
         self.jobs: Dict[str, Job] = {}
         self._background_tasks: set = set()
@@ -101,6 +105,7 @@ class JobManager:
             await dropout_downloader.download(
                 source["url"], dest_dir, self.netrc_path,
                 progress_callback=lambda d: _update_progress(job, d),
+                cookies_path=self.cookies_path,
             )
             job.storage = str(dest_dir)
             job.status = "completed"
@@ -119,9 +124,12 @@ class JobManager:
 job_manager: Optional[JobManager] = None
 
 
-def init_job_manager(tvdb_client: TVDBClient, netrc_path: str, downloads_dir: str) -> None:
+def init_job_manager(
+    tvdb_client: TVDBClient, netrc_path: str, downloads_dir: str,
+    cookies_path: Optional[str] = None,
+) -> None:
     global job_manager
-    job_manager = JobManager(tvdb_client, netrc_path, downloads_dir)
+    job_manager = JobManager(tvdb_client, netrc_path, downloads_dir, cookies_path)
 
 
 def parse_nzb_link(link: str) -> Dict[str, int]:

@@ -25,6 +25,9 @@ services:
       # yt-dlp download configuration -- paths *inside the container*, see
       # the volumes section below for how they map to the host
       - NETRC_PATH=${NETRC_PATH:-/config/.netrc}
+      # Browser-exported cookies.txt -- currently REQUIRED in practice, since
+      # dropout.tv's profile picker breaks yt-dlp's .netrc login (see README)
+      # - COOKIES_PATH=/config/cookies.txt
       - DOWNLOADS_DIR=${DOWNLOADS_DIR:-/downloads}
 
       # OPTIONAL: Service configuration
@@ -43,6 +46,7 @@ services:
       #     login you@example.com
       #     password yourpassword
       - ./config/.netrc:/config/.netrc:ro
+      # - ./config/cookies.txt:/config/cookies.txt:ro
       # Must be the SAME host path Sonarr's download client mounts as its
       # own downloads folder, so the "storage" path this service reports
       # resolves inside Sonarr's own filesystem view too.
