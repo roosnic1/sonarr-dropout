@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-10-21
+
+### Changed
+- Bumped `fastapi` from 0.143.0 to 0.143.3 (patch release)
+- Bumped `pydantic` from 2.14.0 to 2.14.1 (patch release)
+- Bumped `pydantic-settings` from 2.15.0 to 2.16.0
+
 ## [0.1.8] - 2026-10-20
 
 ### Changed
@@ -94,6 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TVDB_API_KEY` (required) and optional `TVDB_PIN` for TheTVDB v4 API access
 - `PUBLIC_URL`, `NETRC_PATH`, `DOWNLOADS_DIR`, `SERVICE_PORT`/`SERVICE_HOST`, `PROWLARR_API_KEY`, `LOG_LEVEL`, `CACHE_TTL` via environment variables / `.env`
 
+[0.1.9]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.9
 [0.1.8]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.8
 [0.1.7]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.7
 [0.1.6]: https://github.com/roosnic1/sonarr-dropout/releases/tag/v0.1.6
